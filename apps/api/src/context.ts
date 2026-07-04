@@ -19,7 +19,6 @@ export interface AppContext {
   encryptor: Encryptor;
   queues: {
     deploy: Queue;
-    pipeline: Queue;
     webhook: Queue;
     healthcheck: Queue;
     rollback: Queue;
@@ -39,7 +38,6 @@ export function createContext(): AppContext {
   const connection = { connection: redis };
   const queues = {
     deploy: new Queue(QUEUE_NAMES.DEPLOY, connection),
-    pipeline: new Queue(QUEUE_NAMES.PIPELINE, connection),
     webhook: new Queue(QUEUE_NAMES.WEBHOOK, connection),
     healthcheck: new Queue(QUEUE_NAMES.HEALTHCHECK, connection),
     rollback: new Queue(QUEUE_NAMES.ROLLBACK, connection),

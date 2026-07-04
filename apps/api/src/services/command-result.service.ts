@@ -88,6 +88,7 @@ async function finalizeSuccessfulDeploy(
     }
   });
 
+  await closePipelineRun(prisma, deploymentId, healthy);
   await publishDeployment(prisma, realtime, deploymentId, healthy ? 'running' : 'failed');
 }
 
@@ -113,7 +114,41 @@ async function failDeploy(
       seq: 999_999,
     },
   });
+  await closePipelineRun(prisma, deploymentId, false);
   await publishDeployment(prisma, realtime, deploymentId, 'failed');
+}
+
+/** Close the deploy/healthcheck/finalize stages and set the run's final status. */
+async function closePipelineRun(
+  prisma: PrismaClient,
+  deploymentId: string,
+  success: boolean,
+): Promise<void> {
+  const run = await prisma.pipelineRun.findFirst({
+    where: { deploymentId },
+    include: { stages: true },
+  });
+  if (!run) return;
+  const now = new Date();
+  const finalStage = success ? 'succeeded' : 'failed';
+  for (const name of ['deploy', 'healthcheck', 'finalize']) {
+    const stage = run.stages.find((s) => s.name === name);
+    if (!stage) continue;
+    await prisma.pipelineStage.update({
+      where: { id: stage.id },
+      data: {
+        status: success ? 'succeeded' : name === 'deploy' ? 'failed' : 'skipped',
+        startedAt: stage.startedAt ?? now,
+        finishedAt: now,
+        exitCode: success ? 0 : 1,
+      },
+    });
+  }
+  await prisma.pipelineRun.update({
+    where: { id: run.id },
+    data: { status: success ? 'succeeded' : 'failed', finishedAt: now },
+  });
+  void finalStage;
 }
 
 async function publishDeployment(
