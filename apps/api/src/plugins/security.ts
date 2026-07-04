@@ -36,7 +36,8 @@ export default fp(async function securityPlugin(app) {
     secret: config.SESSION_SECRET,
     parseOptions: {
       httpOnly: true,
-      sameSite: 'lax',
+      // Cross-site (web + API on different HTTPS origins) needs None+Secure.
+      sameSite: config.isProduction ? 'none' : 'lax',
       secure: config.isProduction,
       path: '/',
       ...(config.SESSION_COOKIE_DOMAIN ? { domain: config.SESSION_COOKIE_DOMAIN } : {}),

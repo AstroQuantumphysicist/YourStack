@@ -116,7 +116,10 @@ function setSessionCookie(
 ) {
   reply.setCookie(SESSION_COOKIE, token, {
     httpOnly: true,
-    sameSite: 'lax',
+    // When served over HTTPS (production), the web app and API may live on
+    // different sites (e.g. *.up.railway.app subdomains), so the session cookie
+    // must be SameSite=None + Secure to be sent on cross-site fetches.
+    sameSite: secure ? 'none' : 'lax',
     secure,
     path: '/',
     expires: expiresAt,
