@@ -8,6 +8,7 @@ import type {
   CronJobDTO,
   DatabaseDTO,
   FunctionDTO,
+  LoadBalancerDTO,
   ProjectDTO,
 } from '@yourstack/shared';
 import { api } from './api';
@@ -66,6 +67,11 @@ export const useWorkspaceFunctions = makeResourceHook<FunctionDTO>(
 export const useWorkspaceCron = makeResourceHook<CronJobDTO>(
   'ws-cron',
   async (pid) => (await api.projectCron(pid)).cronJobs,
+);
+
+export const useWorkspaceLoadBalancers = makeResourceHook<LoadBalancerDTO>(
+  'ws-load-balancers',
+  async (pid) => (await api.loadBalancers(pid)).loadBalancers,
 );
 
 /**

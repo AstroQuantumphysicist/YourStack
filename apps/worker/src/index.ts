@@ -14,6 +14,9 @@ import { processFunction } from './processors/function.js';
 import { processRunner } from './processors/runner.js';
 import { processAutoscale } from './processors/autoscale.js';
 import { processCron } from './processors/cron.js';
+import { processFirewall } from './processors/firewall.js';
+import { processLoadBalancer } from './processors/loadbalancer.js';
+import { processNodeAdmin } from './processors/nodeadmin.js';
 
 type Processor = (ctx: WorkerContext, job: Job) => Promise<void>;
 
@@ -63,6 +66,9 @@ async function main() {
     makeWorker(ctx, QUEUE_NAMES.RUNNER, processRunner, 4),
     makeWorker(ctx, QUEUE_NAMES.AUTOSCALE, processAutoscale, 4),
     makeWorker(ctx, QUEUE_NAMES.CRON, processCron, 4),
+    makeWorker(ctx, QUEUE_NAMES.FIREWALL, processFirewall, 4),
+    makeWorker(ctx, QUEUE_NAMES.LOADBALANCER, processLoadBalancer, 4),
+    makeWorker(ctx, QUEUE_NAMES.NODE_ADMIN, processNodeAdmin, 4),
   ];
 
   await scheduleMaintenance(ctx);

@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
+  "main": "./src/server.ts",
+  "types": "./src/server.ts",
+  "exports": {
+    ".": "./src/server.ts",
+    "./package.json": "./package.json"
+  },
   "bin": {
     "yourstack-mcp": "./dist/index.js"
   },

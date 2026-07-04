@@ -187,6 +187,10 @@ const RESOURCE_COMMAND_TYPES = new Set<string>([
   CommandType.REGISTER_RUNNER,
   CommandType.DEREGISTER_RUNNER,
   CommandType.SCALE_APP,
+  // v4 networking (node-admin commands carry no resource row and are recorded generically).
+  CommandType.CONFIGURE_FIREWALL,
+  CommandType.PROVISION_LB,
+  CommandType.REMOVE_LB,
 ]);
 
 /** Map a terminal command status to a CronRun status string. */
@@ -335,5 +339,32 @@ async function applyResourceResult(
       }
       break;
     }
+    case CommandType.CONFIGURE_FIREWALL: {
+      const id = String(spec.firewallId);
+      await prisma.firewall.updateMany({ where: { id }, data: { status: ok ? 'active' : 'failed' } });
+      await realtime.publish(SSE_CHANNELS.firewall(id), 'firewall.status', {
+        firewallId: id,
+        status: ok ? 'active' : 'failed',
+      });
+      break;
+    }
+    case CommandType.PROVISION_LB: {
+      const id = String(spec.loadBalancerId);
+      await prisma.loadBalancer.updateMany({
+        where: { id },
+        data: {
+          status: ok ? 'active' : 'failed',
+          containerName: (spec.containerName as string) ?? undefined,
+        },
+      });
+      await realtime.publish(SSE_CHANNELS.loadBalancer(id), 'loadbalancer.status', {
+        loadBalancerId: id,
+        status: ok ? 'active' : 'failed',
+      });
+      break;
+    }
+    case CommandType.REMOVE_LB:
+      // No persisted transition: the row is already soft-deleted at request time.
+      break;
   }
 }

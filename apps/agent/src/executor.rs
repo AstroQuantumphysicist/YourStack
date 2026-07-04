@@ -230,6 +230,21 @@ impl Executor {
             CommandPayload::RunJob { spec } => {
                 resources::run_job(self.require_docker()?, &spec).await
             }
+            // ---- v4 networking + node administration ----
+            CommandPayload::ConfigureFirewall { spec } => {
+                resources::configure_firewall(&spec).await
+            }
+            CommandPayload::ProvisionLb { spec } => {
+                resources::provision_lb(self.require_docker()?, &spec).await
+            }
+            CommandPayload::RemoveLb { spec } => {
+                resources::remove_lb(self.require_docker()?, &spec).await
+            }
+            CommandPayload::NodeReboot { spec } => resources::node_reboot(&spec).await,
+            CommandPayload::DockerPrune { spec } => {
+                resources::docker_prune(self.require_docker()?, &spec).await
+            }
+            CommandPayload::AgentUpdate { spec } => resources::agent_update(&spec).await,
         }
     }
 

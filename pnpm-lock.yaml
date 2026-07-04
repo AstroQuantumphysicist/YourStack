@@ -89,6 +89,9 @@ importers:
       undici:
         specifier: ^6.19.8
         version: 6.27.0
+      yaml:
+        specifier: ^2.5.1
+        version: 2.9.0
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -117,6 +120,9 @@ importers:
       '@clack/prompts':
         specifier: ^0.7.0
         version: 0.7.0
+      '@yourstack/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@yourstack/shared':
         specifier: workspace:*
         version: link:../../packages/shared

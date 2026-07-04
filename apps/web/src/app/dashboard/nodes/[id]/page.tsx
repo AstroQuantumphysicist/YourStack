@@ -8,9 +8,11 @@ import {
   ArrowLeft,
   Boxes,
   Cpu,
+  Gauge,
   HardDrive,
   MemoryStick,
   Plus,
+  Settings2,
   Tag,
   Trash2,
   X,
@@ -20,6 +22,7 @@ import { api, ApiError, type HeartbeatPoint, type NodeAppSummary } from '@/lib/a
 import { useSSE } from '@/lib/use-sse';
 import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/page-header';
+import { Tabs } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,10 +30,16 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Sparkline } from '@/components/ui/sparkline';
 import { UsageBar } from '@/components/dashboard/usage-bar';
+import { NodeManageTab } from '@/components/dashboard/node-manage-tab';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/states';
 import { MetricsPanel } from '@/components/metrics/metrics-panel';
 import { formatMb, timeAgo } from '@/lib/format';
+
+const NODE_TABS = [
+  { value: 'overview', label: 'Overview', icon: Gauge },
+  { value: 'manage', label: 'Manage', icon: Settings2 },
+];
 
 export default function NodeDetailPage() {
   const params = useParams<{ id: string }>();
@@ -43,6 +52,7 @@ export default function NodeDetailPage() {
   const apps = useSWR<{ apps: NodeAppSummary[] }>(`/nodes/${nodeId}/apps`);
 
   const [busy, setBusy] = useState<string | null>(null);
+  const [tab, setTab] = useState('overview');
 
   useSSE(`node:${nodeId}`, {
     onEvent: (msg) => {
@@ -124,10 +134,16 @@ export default function NodeDetailPage() {
         }
       />
 
+      {node ? <Tabs tabs={NODE_TABS} value={tab} onChange={setTab} /> : null}
+
       {!node ? (
         <Skeleton className="h-64 w-full rounded-2xl" />
+      ) : tab === 'manage' ? (
+        <div className="animate-fade-in">
+          <NodeManageTab node={node} />
+        </div>
       ) : (
-        <>
+        <div className="animate-fade-in space-y-6">
           <div className="grid gap-4 lg:grid-cols-3">
             <ResourceCard
               title="CPU"
@@ -216,7 +232,7 @@ export default function NodeDetailPage() {
               <MetricsPanel scope="node" targetId={nodeId} height={160} />
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </div>
   );

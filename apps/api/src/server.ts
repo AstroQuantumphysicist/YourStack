@@ -34,6 +34,11 @@ import metricsQueryRoutes from './routes/metrics-query.js';
 import templateRoutes from './routes/templates.js';
 import cronRoutes from './routes/cron.js';
 import githubAppRoutes from './routes/github-app.js';
+import organizationRoutes from './routes/organizations.js';
+import firewallRoutes from './routes/firewalls.js';
+import loadBalancerRoutes from './routes/loadbalancers.js';
+import nodeAdminRoutes from './routes/node-admin.js';
+import blueprintRoutes from './routes/blueprint.js';
 
 export interface BuiltServer {
   app: FastifyInstance;
@@ -112,6 +117,12 @@ export async function buildServer(ctx = createContext()): Promise<BuiltServer> {
     await instance.register(templateRoutes);
     await instance.register(cronRoutes);
     await instance.register(githubAppRoutes);
+    // Orgs & teams, networking, node admin, blueprint (v4)
+    await instance.register(organizationRoutes);
+    await instance.register(firewallRoutes);
+    await instance.register(loadBalancerRoutes);
+    await instance.register(nodeAdminRoutes);
+    await instance.register(blueprintRoutes);
   };
   await app.register(v1, { prefix: `/${API_VERSION}` });
 

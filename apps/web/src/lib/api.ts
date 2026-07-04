@@ -2,17 +2,23 @@ import type {
   AppDTO,
   AuditLogDTO,
   ApiTokenDTO,
+  Blueprint,
+  BlueprintPlanItem,
   BucketDTO,
   CronJobDTO,
   DatabaseDTO,
   DeploymentDTO,
   DomainDTO,
+  FirewallDTO,
   FunctionDTO,
   GithubInstallationDTO,
   GitRepositoryDTO,
+  LoadBalancerDTO,
   MemberDTO,
   MetricSeries,
   NodeDTO,
+  OrganizationDTO,
+  OrgMemberDTO,
   PipelineRunDTO,
   ProjectDTO,
   RegionDTO,
@@ -20,6 +26,8 @@ import type {
   RunnerPoolDTO,
   ScalingPolicyDTO,
   SecretDTO,
+  TeamDTO,
+  TeamMemberDTO,
   TemplateDTO,
   UserDTO,
   WorkspaceDTO,
@@ -308,6 +316,26 @@ export interface MetricsQuery {
   stepSeconds?: number;
 }
 
+/* ------------------------------ v4 response shapes -------------------------- */
+
+/** A node administration command as returned by `GET /nodes/:id/commands`. */
+export interface NodeCommand {
+  id: string;
+  type: string;
+  status: string;
+  output: Record<string, unknown> | string | null;
+  error: string | null;
+  createdAt: string;
+  finishedAt?: string | null;
+}
+
+export type NodeActionKind = 'reboot' | 'docker_prune' | 'agent_update';
+
+export interface BlueprintApplyResult {
+  plan: BlueprintPlanItem[];
+  applied?: boolean;
+}
+
 /* --------------------------------- Client ---------------------------------- */
 
 export const api = {
@@ -562,6 +590,108 @@ export const api = {
         stepSeconds: q.stepSeconds,
       },
     }),
+
+  // Organizations (v4)
+  organizations: () => request<{ organizations: OrganizationDTO[] }>('/organizations'),
+  createOrganization: (name: string) =>
+    request<{ organization: OrganizationDTO }>('/organizations', {
+      method: 'POST',
+      body: { name },
+    }),
+  organization: (id: string) =>
+    request<{ organization: OrganizationDTO }>(`/organizations/${id}`),
+  organizationWorkspaces: (id: string) =>
+    request<{ workspaces: WorkspaceDTO[] }>(`/organizations/${id}/workspaces`),
+  orgMembers: (id: string) =>
+    request<{ members: OrgMemberDTO[] }>(`/organizations/${id}/members`),
+  inviteOrgMember: (id: string, email: string, role: string) =>
+    request<{ member: OrgMemberDTO }>(`/organizations/${id}/members`, {
+      method: 'POST',
+      body: { email, role },
+    }),
+  updateOrgMember: (id: string, memberId: string, role: string) =>
+    request<{ member: OrgMemberDTO }>(`/organizations/${id}/members/${memberId}`, {
+      method: 'PATCH',
+      body: { role },
+    }),
+  removeOrgMember: (id: string, memberId: string) =>
+    request<void>(`/organizations/${id}/members/${memberId}`, { method: 'DELETE' }),
+
+  // Teams (v4)
+  orgTeams: (id: string) => request<{ teams: TeamDTO[] }>(`/organizations/${id}/teams`),
+  createTeam: (id: string, name: string) =>
+    request<{ team: TeamDTO }>(`/organizations/${id}/teams`, {
+      method: 'POST',
+      body: { name },
+    }),
+  team: (id: string) => request<{ team: TeamDTO }>(`/teams/${id}`),
+  deleteTeam: (id: string) => request<void>(`/teams/${id}`, { method: 'DELETE' }),
+  teamMembers: (id: string) =>
+    request<{ members: TeamMemberDTO[] }>(`/teams/${id}/members`),
+  addTeamMember: (id: string, userId: string, role: string) =>
+    request<{ member: TeamMemberDTO }>(`/teams/${id}/members`, {
+      method: 'POST',
+      body: { userId, role },
+    }),
+  removeTeamMember: (id: string, userId: string) =>
+    request<void>(`/teams/${id}/members/${userId}`, { method: 'DELETE' }),
+  grantTeamWorkspace: (id: string, workspaceId: string, role: string) =>
+    request<{ team: TeamDTO }>(`/teams/${id}/grants`, {
+      method: 'POST',
+      body: { workspaceId, role },
+    }),
+  revokeTeamWorkspace: (id: string, workspaceId: string) =>
+    request<void>(`/teams/${id}/grants/${workspaceId}`, { method: 'DELETE' }),
+
+  // Firewalls (v4)
+  firewalls: (wid: string) =>
+    request<{ firewalls: FirewallDTO[] }>(`/workspaces/${wid}/firewalls`),
+  createFirewall: (wid: string, body: Record<string, unknown>) =>
+    request<{ firewall: FirewallDTO }>(`/workspaces/${wid}/firewalls`, {
+      method: 'POST',
+      body,
+    }),
+  firewall: (id: string) => request<{ firewall: FirewallDTO }>(`/firewalls/${id}`),
+  updateFirewall: (id: string, body: Record<string, unknown>) =>
+    request<{ firewall: FirewallDTO }>(`/firewalls/${id}`, { method: 'PATCH', body }),
+  deleteFirewall: (id: string) => request<void>(`/firewalls/${id}`, { method: 'DELETE' }),
+  applyFirewall: (id: string) =>
+    request<{ firewall: FirewallDTO }>(`/firewalls/${id}/apply`, { method: 'POST' }),
+
+  // Load balancers (v4)
+  loadBalancers: (pid: string) =>
+    request<{ loadBalancers: LoadBalancerDTO[] }>(`/projects/${pid}/load-balancers`),
+  createLoadBalancer: (pid: string, body: Record<string, unknown>) =>
+    request<{ loadBalancer: LoadBalancerDTO }>(`/projects/${pid}/load-balancers`, {
+      method: 'POST',
+      body,
+    }),
+  loadBalancer: (id: string) =>
+    request<{ loadBalancer: LoadBalancerDTO }>(`/load-balancers/${id}`),
+  reconcileLoadBalancer: (id: string) =>
+    request<{ loadBalancer: LoadBalancerDTO }>(`/load-balancers/${id}/reconcile`, {
+      method: 'POST',
+    }),
+  deleteLoadBalancer: (id: string) =>
+    request<void>(`/load-balancers/${id}`, { method: 'DELETE' }),
+
+  // Node administration (v4)
+  nodeAction: (id: string, action: NodeActionKind, version?: string) =>
+    request<{ command: NodeCommand }>(`/nodes/${id}/actions`, {
+      method: 'POST',
+      body: { action, ...(version ? { version } : {}) },
+    }),
+  nodeCommands: (id: string) =>
+    request<{ commands: NodeCommand[] }>(`/nodes/${id}/commands`),
+
+  // Blueprint (v4)
+  applyBlueprint: (workspaceId: string, blueprint: Blueprint, dryRun: boolean) =>
+    request<BlueprintApplyResult>('/blueprint/apply', {
+      method: 'POST',
+      body: { workspaceId, blueprint, dryRun },
+    }),
+  projectBlueprint: (pid: string) =>
+    request<{ blueprint: Blueprint }>(`/projects/${pid}/blueprint`),
 };
 
 /** SWR fetcher: a plain path (e.g. "/apps/123") is fetched via the client. */

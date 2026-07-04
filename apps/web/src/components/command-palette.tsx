@@ -9,9 +9,12 @@ import {
   Database,
   FunctionSquare,
   HardDrive,
+  Network,
   Plus,
   Search,
+  ShieldCheck,
   Store,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react';
 import { NAV_ITEMS } from './dashboard/nav';
@@ -110,6 +113,30 @@ export function CommandPalette() {
         group: 'Actions',
         keywords: 'new scheduled task schedule job',
         run: (r) => r.push('/dashboard/cron?new=1'),
+      },
+      {
+        id: 'open-builder',
+        label: 'Open infrastructure builder',
+        icon: Workflow,
+        group: 'Actions',
+        keywords: 'visual canvas blueprint yaml compose drag drop diagram',
+        run: (r) => r.push('/dashboard/builder'),
+      },
+      {
+        id: 'new-firewall',
+        label: 'Create firewall',
+        icon: ShieldCheck,
+        group: 'Actions',
+        keywords: 'new network security rules ports allow deny',
+        run: (r) => r.push('/dashboard/firewalls?new=1'),
+      },
+      {
+        id: 'new-load-balancer',
+        label: 'Create load balancer',
+        icon: Network,
+        group: 'Actions',
+        keywords: 'new lb balance traffic targets algorithm',
+        run: (r) => r.push('/dashboard/load-balancers?new=1'),
       },
     ];
     const nav: Command[] = NAV_ITEMS.filter((n) => !n.adminOnly || user?.isPlatformAdmin).map(

@@ -27,6 +27,7 @@ pub const LABEL_STORAGE: &str = "io.yourstack.storage";
 pub const LABEL_FUNCTION: &str = "io.yourstack.function";
 pub const LABEL_RUNNER: &str = "io.yourstack.runner";
 pub const LABEL_JOB: &str = "io.yourstack.job";
+pub const LABEL_LB: &str = "io.yourstack.lb";
 
 /* ------------------------------- registration ------------------------------ */
 
@@ -203,6 +204,19 @@ pub enum CommandPayload {
     // ---- v3 scheduled jobs ----
     #[serde(rename = "RUN_JOB")]
     RunJob { spec: RunJobSpec },
+    // ---- v4 networking + node administration ----
+    #[serde(rename = "CONFIGURE_FIREWALL")]
+    ConfigureFirewall { spec: ConfigureFirewallSpec },
+    #[serde(rename = "PROVISION_LB")]
+    ProvisionLb { spec: ProvisionLbSpec },
+    #[serde(rename = "REMOVE_LB")]
+    RemoveLb { spec: RemoveLbSpec },
+    #[serde(rename = "NODE_REBOOT")]
+    NodeReboot { spec: NodeRebootSpec },
+    #[serde(rename = "DOCKER_PRUNE")]
+    DockerPrune { spec: DockerPruneSpec },
+    #[serde(rename = "AGENT_UPDATE")]
+    AgentUpdate { spec: AgentUpdateSpec },
 }
 
 impl CommandPayload {
@@ -230,6 +244,12 @@ impl CommandPayload {
             CommandPayload::DeregisterRunner { .. } => "DEREGISTER_RUNNER",
             CommandPayload::ScaleApp { .. } => "SCALE_APP",
             CommandPayload::RunJob { .. } => "RUN_JOB",
+            CommandPayload::ConfigureFirewall { .. } => "CONFIGURE_FIREWALL",
+            CommandPayload::ProvisionLb { .. } => "PROVISION_LB",
+            CommandPayload::RemoveLb { .. } => "REMOVE_LB",
+            CommandPayload::NodeReboot { .. } => "NODE_REBOOT",
+            CommandPayload::DockerPrune { .. } => "DOCKER_PRUNE",
+            CommandPayload::AgentUpdate { .. } => "AGENT_UPDATE",
         }
     }
 }
@@ -737,6 +757,198 @@ pub struct RunJobSpec {
     pub timeout_ms: i64,
     #[serde(rename = "registryAuth", default)]
     pub registry_auth: Option<String>,
+}
+
+/* --------------------- v4 networking + node admin specs -------------------- */
+
+/// A firewall default policy (`defaultInbound` / `defaultOutbound`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FirewallPolicy {
+    Allow,
+    Deny,
+}
+impl FirewallPolicy {
+    /// nftables verdict for this policy.
+    pub fn verdict(self) -> &'static str {
+        match self {
+            FirewallPolicy::Allow => "accept",
+            FirewallPolicy::Deny => "drop",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FirewallDirection {
+    Inbound,
+    Outbound,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FirewallRuleAction {
+    Allow,
+    Deny,
+}
+impl FirewallRuleAction {
+    pub fn verdict(self) -> &'static str {
+        match self {
+            FirewallRuleAction::Allow => "accept",
+            FirewallRuleAction::Deny => "drop",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FirewallProtocol {
+    Tcp,
+    Udp,
+    Icmp,
+    Any,
+}
+
+fn default_direction() -> FirewallDirection {
+    FirewallDirection::Inbound
+}
+fn default_rule_action() -> FirewallRuleAction {
+    FirewallRuleAction::Allow
+}
+fn default_protocol_fw() -> FirewallProtocol {
+    FirewallProtocol::Tcp
+}
+fn default_cidr() -> String {
+    "0.0.0.0/0".to_string()
+}
+fn default_policy_deny() -> FirewallPolicy {
+    FirewallPolicy::Deny
+}
+fn default_policy_allow() -> FirewallPolicy {
+    FirewallPolicy::Allow
+}
+
+/// `firewallRuleSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct FirewallRuleSpec {
+    #[serde(default = "default_direction")]
+    pub direction: FirewallDirection,
+    #[serde(default = "default_rule_action")]
+    pub action: FirewallRuleAction,
+    #[serde(default = "default_protocol_fw")]
+    pub protocol: FirewallProtocol,
+    #[serde(default)]
+    pub port: Option<String>,
+    #[serde(default = "default_cidr")]
+    pub cidr: String,
+    #[serde(default)]
+    pub comment: Option<String>,
+}
+
+/// `configureFirewallSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConfigureFirewallSpec {
+    #[serde(rename = "firewallId")]
+    pub firewall_id: String,
+    #[serde(rename = "defaultInbound", default = "default_policy_deny")]
+    pub default_inbound: FirewallPolicy,
+    #[serde(rename = "defaultOutbound", default = "default_policy_allow")]
+    pub default_outbound: FirewallPolicy,
+    #[serde(default)]
+    pub rules: Vec<FirewallRuleSpec>,
+}
+
+/// Load-balancing algorithm (`lbAlgorithmSchema`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LbAlgorithm {
+    RoundRobin,
+    LeastConn,
+    IpHash,
+}
+
+fn default_lb_algorithm() -> LbAlgorithm {
+    LbAlgorithm::RoundRobin
+}
+fn default_weight() -> i64 {
+    1
+}
+fn default_health_path() -> String {
+    "/".to_string()
+}
+
+/// `lbTargetSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct LbTargetSpec {
+    pub address: String,
+    #[serde(default = "default_weight")]
+    pub weight: i64,
+}
+
+/// `provisionLbSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProvisionLbSpec {
+    #[serde(rename = "loadBalancerId")]
+    pub load_balancer_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    #[serde(rename = "listenPort")]
+    pub listen_port: u16,
+    #[serde(default = "default_lb_algorithm")]
+    pub algorithm: LbAlgorithm,
+    pub targets: Vec<LbTargetSpec>,
+    #[serde(default)]
+    pub domain: Option<String>,
+    #[serde(rename = "autoHttps", default)]
+    pub auto_https: bool,
+    #[serde(rename = "healthPath", default = "default_health_path")]
+    pub health_path: String,
+    #[serde(default)]
+    pub sticky: bool,
+}
+
+/// `removeLbSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RemoveLbSpec {
+    #[serde(rename = "loadBalancerId")]
+    pub load_balancer_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+}
+
+fn default_reboot_delay() -> i64 {
+    5
+}
+
+/// `nodeRebootSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct NodeRebootSpec {
+    #[serde(rename = "delaySeconds", default = "default_reboot_delay")]
+    pub delay_seconds: i64,
+}
+
+/// `dockerPruneSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DockerPruneSpec {
+    #[serde(default = "default_true")]
+    pub images: bool,
+    #[serde(default)]
+    pub volumes: bool,
+    #[serde(rename = "buildCache", default = "default_true")]
+    pub build_cache: bool,
+}
+
+fn default_version_latest() -> String {
+    "latest".to_string()
+}
+
+/// `agentUpdateSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AgentUpdateSpec {
+    #[serde(default = "default_version_latest")]
+    pub version: String,
+    #[serde(rename = "downloadUrl", default)]
+    pub download_url: Option<String>,
 }
 
 /* ---------------------------------- results -------------------------------- */

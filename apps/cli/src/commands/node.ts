@@ -82,4 +82,57 @@ export function registerNode(program: Command): void {
         ]),
       );
     });
+
+  // --- Node administration: manage the connected server itself ---
+  const runAction = async (
+    nodeId: string,
+    action: 'reboot' | 'docker_prune' | 'agent_update',
+    flags: GlobalFlags,
+    version?: string,
+  ) => {
+    const { client } = await requireClient(flags);
+    await client.post(`/nodes/${nodeId}/actions`, { action, version });
+    success(`Dispatched ${pc.cyan(action)} to node ${nodeId}.`);
+  };
+
+  node
+    .command('reboot <nodeId>')
+    .description('Reboot a connected node')
+    .action((nodeId: string, _o: unknown, cmd: Command) =>
+      runAction(nodeId, 'reboot', cmd.optsWithGlobals() as GlobalFlags),
+    );
+
+  node
+    .command('prune <nodeId>')
+    .description('Prune unused Docker images/build cache on a node to reclaim disk')
+    .action((nodeId: string, _o: unknown, cmd: Command) =>
+      runAction(nodeId, 'docker_prune', cmd.optsWithGlobals() as GlobalFlags),
+    );
+
+  node
+    .command('update-agent <nodeId>')
+    .description('Update the YourStack agent on a node')
+    .option('--version <v>', 'Agent version/channel', 'latest')
+    .action((nodeId: string, opts: { version?: string }, cmd: Command) =>
+      runAction(nodeId, 'agent_update', cmd.optsWithGlobals() as GlobalFlags, opts.version),
+    );
+
+  node
+    .command('commands <nodeId>')
+    .description('Show recent commands dispatched to a node')
+    .option('--json', 'Output raw JSON')
+    .action(async (nodeId: string, opts: { json?: boolean }, cmd: Command) => {
+      const { client } = await requireClient(cmd.optsWithGlobals() as GlobalFlags);
+      const { commands } = await client.get<{ commands: Array<{ type: string; status: string; createdAt: string }> }>(
+        `/nodes/${nodeId}/commands`,
+      );
+      if (opts.json) return printJson(commands);
+      info(
+        renderTable(commands, [
+          { header: 'TYPE', value: (c) => c.type },
+          { header: 'STATUS', value: (c) => statusColor(c.status) },
+          { header: 'WHEN', value: (c) => timeAgo(c.createdAt) },
+        ]),
+      );
+    });
 }

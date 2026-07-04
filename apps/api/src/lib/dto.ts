@@ -25,6 +25,16 @@ import type {
   Template,
   CronJob,
   GithubInstallation,
+  Organization,
+  OrgMember,
+  Team,
+  TeamMember,
+  WorkspaceGrant,
+  Firewall,
+  FirewallRule,
+  LoadBalancer,
+  LBTarget,
+  NodeCommand,
 } from '@yourstack/db';
 import type {
   AppDTO,
@@ -56,6 +66,16 @@ import type {
   TemplateVariableDTO,
   CronJobDTO,
   GithubInstallationDTO,
+  OrganizationDTO,
+  OrgMemberDTO,
+  TeamDTO,
+  TeamMemberDTO,
+  FirewallDTO,
+  FirewallRuleDTO,
+  LoadBalancerDTO,
+  CommandDTO,
+  CommandType,
+  CommandStatus,
 } from '@yourstack/shared';
 import { iso } from './util.js';
 import { templateVariableDTOs } from '../services/template.service.js';
@@ -443,5 +463,120 @@ export function toGithubInstallationDTO(i: GithubInstallation): GithubInstallati
     // Count of explicitly-selected repos; "all" installations signal via repositorySelection.
     repositoryCount: i.repositories.length,
     createdAt: i.createdAt.toISOString(),
+  };
+}
+
+/* ------------------------------ Orgs & teams (v4) --------------------------- */
+
+export function toOrganizationDTO(
+  o: Organization & {
+    role?: string;
+    _count?: { workspaces: number; teams: number; members: number };
+  },
+): OrganizationDTO {
+  return {
+    id: o.id,
+    name: o.name,
+    slug: o.slug,
+    role: o.role ?? 'member',
+    workspaceCount: o._count?.workspaces ?? 0,
+    teamCount: o._count?.teams ?? 0,
+    memberCount: o._count?.members ?? 0,
+    createdAt: o.createdAt.toISOString(),
+  };
+}
+
+export function toOrgMemberDTO(m: OrgMember & { user: User }): OrgMemberDTO {
+  return {
+    id: m.id,
+    userId: m.userId,
+    email: m.user.email,
+    name: m.user.name,
+    avatarUrl: m.user.avatarUrl,
+    role: m.role,
+    createdAt: m.createdAt.toISOString(),
+  };
+}
+
+export function toTeamDTO(
+  t: Team & { _count?: { members: number }; grants?: WorkspaceGrant[] },
+): TeamDTO {
+  return {
+    id: t.id,
+    organizationId: t.organizationId,
+    name: t.name,
+    slug: t.slug,
+    memberCount: t._count?.members ?? 0,
+    workspaceGrants: (t.grants ?? []).map((g) => ({ workspaceId: g.workspaceId, role: g.role })),
+    createdAt: t.createdAt.toISOString(),
+  };
+}
+
+export function toTeamMemberDTO(m: TeamMember & { user: User }): TeamMemberDTO {
+  return {
+    id: m.id,
+    userId: m.userId,
+    email: m.user.email,
+    name: m.user.name,
+    role: m.role,
+  };
+}
+
+/* -------------------------------- Networking (v4) -------------------------- */
+
+export function toFirewallRuleDTO(r: FirewallRule): FirewallRuleDTO {
+  return {
+    id: r.id,
+    direction: r.direction,
+    action: r.action,
+    protocol: r.protocol,
+    port: r.port,
+    cidr: r.cidr,
+    comment: r.comment,
+  };
+}
+
+export function toFirewallDTO(f: Firewall & { rules?: FirewallRule[] }): FirewallDTO {
+  return {
+    id: f.id,
+    workspaceId: f.workspaceId,
+    name: f.name,
+    status: f.status,
+    defaultInbound: f.defaultInbound,
+    defaultOutbound: f.defaultOutbound,
+    nodeIds: f.nodeIds,
+    rules: (f.rules ?? []).sort((a, b) => a.position - b.position).map(toFirewallRuleDTO),
+    createdAt: f.createdAt.toISOString(),
+  };
+}
+
+export function toLoadBalancerDTO(lb: LoadBalancer & { targets?: LBTarget[] }): LoadBalancerDTO {
+  return {
+    id: lb.id,
+    projectId: lb.projectId,
+    name: lb.name,
+    status: lb.status,
+    listenPort: lb.listenPort,
+    algorithm: lb.algorithm,
+    nodeId: lb.nodeId,
+    region: lb.region,
+    domain: lb.domain,
+    autoHttps: lb.autoHttps,
+    sticky: lb.sticky,
+    targets: (lb.targets ?? []).map((t) => ({ address: t.address, weight: t.weight, appId: t.appId })),
+    createdAt: lb.createdAt.toISOString(),
+  };
+}
+
+export function toCommandDTO(c: NodeCommand): CommandDTO {
+  return {
+    id: c.id,
+    nodeId: c.nodeId,
+    type: c.type as CommandType,
+    status: c.status as CommandStatus,
+    output: (c.output as Record<string, unknown> | null) ?? null,
+    error: c.error,
+    createdAt: c.createdAt.toISOString(),
+    finishedAt: iso(c.finishedAt),
   };
 }

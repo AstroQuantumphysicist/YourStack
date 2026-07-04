@@ -5,7 +5,9 @@ import {
   DatabaseStatus,
   DeploymentStatus,
   DomainStatus,
+  FirewallStatus,
   FunctionStatus,
+  LoadBalancerStatus,
   NodeStatus,
   PipelineRunStatus,
   RunnerStatus,
@@ -100,6 +102,20 @@ const cronMap: Record<string, Variant> = {
   canceled: 'warning',
 };
 
+const firewallMap: Record<string, Variant> = {
+  [FirewallStatus.ACTIVE]: 'success',
+  [FirewallStatus.APPLYING]: 'info',
+  [FirewallStatus.DRAFT]: 'default',
+  [FirewallStatus.FAILED]: 'danger',
+};
+
+const loadBalancerMap: Record<string, Variant> = {
+  [LoadBalancerStatus.ACTIVE]: 'success',
+  [LoadBalancerStatus.PROVISIONING]: 'info',
+  [LoadBalancerStatus.DEGRADED]: 'warning',
+  [LoadBalancerStatus.FAILED]: 'danger',
+};
+
 const kinds = {
   app: appMap,
   node: nodeMap,
@@ -111,6 +127,8 @@ const kinds = {
   function: functionMap,
   runner: runnerMap,
   cron: cronMap,
+  firewall: firewallMap,
+  loadBalancer: loadBalancerMap,
 } as const;
 
 const activeStates = new Set<string>([
@@ -128,6 +146,8 @@ const activeStates = new Set<string>([
   RunnerStatus.BUSY,
   RunnerStatus.REGISTERING,
   CronJobStatus.RUNNING,
+  FirewallStatus.APPLYING,
+  LoadBalancerStatus.PROVISIONING,
   'running',
   'queued',
 ]);

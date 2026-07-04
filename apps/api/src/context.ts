@@ -30,6 +30,9 @@ export interface AppContext {
     runner: Queue;
     autoscale: Queue;
     cron: Queue;
+    firewall: Queue;
+    loadBalancer: Queue;
+    nodeAdmin: Queue;
   };
   realtime: RealtimeHub;
   github: GithubClient;
@@ -55,6 +58,9 @@ export function createContext(): AppContext {
     runner: new Queue(QUEUE_NAMES.RUNNER, connection),
     autoscale: new Queue(QUEUE_NAMES.AUTOSCALE, connection),
     cron: new Queue(QUEUE_NAMES.CRON, connection),
+    firewall: new Queue(QUEUE_NAMES.FIREWALL, connection),
+    loadBalancer: new Queue(QUEUE_NAMES.LOADBALANCER, connection),
+    nodeAdmin: new Queue(QUEUE_NAMES.NODE_ADMIN, connection),
   };
 
   const encryptor = createEncryptor(config.SECRETS_ENCRYPTION_KEY);

@@ -1,5 +1,6 @@
 import {
   Boxes,
+  Building2,
   Clock,
   Database,
   FunctionSquare,
@@ -10,12 +11,15 @@ import {
   LayoutDashboard,
   LineChart,
   Map,
+  Network,
   Rocket,
   Server,
   Settings,
   Shield,
+  ShieldCheck,
   Store,
   Container,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -58,6 +62,14 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/dashboard/nodes', label: 'Nodes', icon: Server },
       { href: '/dashboard/regions', label: 'Regions', icon: Map },
+      { href: '/dashboard/builder', label: 'Builder', icon: Workflow },
+    ],
+  },
+  {
+    title: 'Network',
+    items: [
+      { href: '/dashboard/firewalls', label: 'Firewalls', icon: ShieldCheck },
+      { href: '/dashboard/load-balancers', label: 'Load Balancers', icon: Network },
     ],
   },
   {
@@ -77,6 +89,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: 'Workspace',
     items: [
       { href: '/dashboard/secrets', label: 'Secrets', icon: KeyRound },
+      { href: '/dashboard/organization', label: 'Organization', icon: Building2 },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
       { href: '/dashboard/admin', label: 'Admin', icon: Shield, adminOnly: true },
     ],

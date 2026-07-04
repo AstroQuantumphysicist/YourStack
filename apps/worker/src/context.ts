@@ -25,6 +25,9 @@ export interface WorkerContext {
     runner: Queue;
     autoscale: Queue;
     cron: Queue;
+    firewall: Queue;
+    loadBalancer: Queue;
+    nodeAdmin: Queue;
   };
 }
 
@@ -50,6 +53,9 @@ export function createContext(): WorkerContext {
     runner: new Queue(QUEUE_NAMES.RUNNER, opts),
     autoscale: new Queue(QUEUE_NAMES.AUTOSCALE, opts),
     cron: new Queue(QUEUE_NAMES.CRON, opts),
+    firewall: new Queue(QUEUE_NAMES.FIREWALL, opts),
+    loadBalancer: new Queue(QUEUE_NAMES.LOADBALANCER, opts),
+    nodeAdmin: new Queue(QUEUE_NAMES.NODE_ADMIN, opts),
   };
 
   return {

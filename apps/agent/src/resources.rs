@@ -19,25 +19,27 @@ use anyhow::{anyhow, bail, Context, Result};
 use base64::Engine as _;
 use bollard::container::{
     Config, CreateContainerOptions, ListContainersOptions, LogOutput, LogsOptions,
-    RemoveContainerOptions, StartContainerOptions, WaitContainerOptions,
+    PruneContainersOptions, RemoveContainerOptions, StartContainerOptions, WaitContainerOptions,
 };
 use bollard::errors::Error as BollardError;
 use bollard::exec::{CreateExecOptions, StartExecResults};
+use bollard::image::PruneImagesOptions;
 use bollard::models::{
     ContainerSummary, HostConfig, PortBinding, RestartPolicy, RestartPolicyNameEnum,
 };
-use bollard::volume::CreateVolumeOptions;
+use bollard::volume::{CreateVolumeOptions, PruneVolumesOptions};
 use futures_util::StreamExt;
 use serde_json::json;
 
 use crate::docker::DockerClient;
 use crate::protocol::{
-    BackupDatabaseSpec, CommandOutput, DatabaseEngine, DeployFunctionSpec, DeregisterRunnerSpec,
-    FunctionRuntime, FunctionSource, InvokeFunctionSpec, ProvisionDatabaseSpec,
-    ProvisionStorageSpec, RegisterRunnerSpec, RemoveDatabaseSpec, RemoveFunctionSpec,
-    RemoveStorageSpec, RunJobSpec, ScaleAppSpec, StopDatabaseSpec, LABEL_APP, LABEL_DATABASE,
-    LABEL_FUNCTION, LABEL_JOB, LABEL_MANAGED, LABEL_RUNNER, LABEL_STORAGE,
-    RUNNER_TOKEN_PLACEHOLDER,
+    AgentUpdateSpec, BackupDatabaseSpec, CommandOutput, ConfigureFirewallSpec, DatabaseEngine,
+    DeployFunctionSpec, DeregisterRunnerSpec, DockerPruneSpec, FirewallDirection, FirewallProtocol,
+    FirewallRuleSpec, FunctionRuntime, FunctionSource, InvokeFunctionSpec, LbAlgorithm,
+    NodeRebootSpec, ProvisionDatabaseSpec, ProvisionLbSpec, ProvisionStorageSpec,
+    RegisterRunnerSpec, RemoveDatabaseSpec, RemoveFunctionSpec, RemoveLbSpec, RemoveStorageSpec,
+    RunJobSpec, ScaleAppSpec, StopDatabaseSpec, LABEL_APP, LABEL_DATABASE, LABEL_FUNCTION,
+    LABEL_JOB, LABEL_LB, LABEL_MANAGED, LABEL_RUNNER, LABEL_STORAGE, RUNNER_TOKEN_PLACEHOLDER,
 };
 
 /* ------------------------------ run primitive ------------------------------ */
@@ -1318,6 +1320,492 @@ pub async fn run_job(docker: &DockerClient, spec: &RunJobSpec) -> Result<Command
     })
 }
 
+/* --------------------------------- firewall -------------------------------- */
+
+/// Render one nftables rule line for a firewall rule. `inbound` selects whether
+/// the CIDR matches the source (`saddr`) or destination (`daddr`) address. Pure.
+fn render_firewall_rule(rule: &FirewallRuleSpec) -> String {
+    let addr_kw = match rule.direction {
+        FirewallDirection::Inbound => "saddr",
+        FirewallDirection::Outbound => "daddr",
+    };
+    let mut parts: Vec<String> = Vec::new();
+
+    // Only emit an address match when it isn't the catch-all (keeps rules terse).
+    if rule.cidr != "0.0.0.0/0" && !rule.cidr.is_empty() {
+        parts.push(format!("ip {addr_kw} {}", rule.cidr));
+    }
+
+    match rule.protocol {
+        FirewallProtocol::Tcp => match &rule.port {
+            Some(p) if !p.is_empty() => parts.push(format!("tcp dport {}", nft_port(p))),
+            _ => parts.push("meta l4proto tcp".to_string()),
+        },
+        FirewallProtocol::Udp => match &rule.port {
+            Some(p) if !p.is_empty() => parts.push(format!("udp dport {}", nft_port(p))),
+            _ => parts.push("meta l4proto udp".to_string()),
+        },
+        FirewallProtocol::Icmp => parts.push("meta l4proto { icmp, icmpv6 }".to_string()),
+        FirewallProtocol::Any => {}
+    }
+
+    parts.push(rule.action.verdict().to_string());
+    parts.join(" ")
+}
+
+/// Convert a spec port/range (`"443"` or `"8000-9000"`) into nft syntax. A range
+/// uses a dash; nft accepts `8000-9000` for `dport`.
+fn nft_port(port: &str) -> String {
+    port.trim().to_string()
+}
+
+/// Render a complete nftables ruleset for a firewall spec. Pure and deterministic
+/// so it can be unit-tested without touching the kernel. Establishes an `inet`
+/// table with input/output base chains, the default policies, baseline
+/// conntrack/loopback allowances, then the per-rule verdicts.
+pub fn render_nftables(spec: &ConfigureFirewallSpec) -> String {
+    let mut s = String::new();
+    // Flush our own table so re-applying is idempotent (never touches other tables).
+    s.push_str("table inet yourstack_fw\n");
+    s.push_str("delete table inet yourstack_fw\n");
+    s.push_str("table inet yourstack_fw {\n");
+
+    // Input chain.
+    s.push_str("\tchain input {\n");
+    s.push_str(&format!(
+        "\t\ttype filter hook input priority 0; policy {};\n",
+        spec.default_inbound.verdict()
+    ));
+    s.push_str("\t\tct state established,related accept\n");
+    s.push_str("\t\tiif \"lo\" accept\n");
+    for rule in spec
+        .rules
+        .iter()
+        .filter(|r| r.direction == FirewallDirection::Inbound)
+    {
+        s.push_str(&format!("\t\t{}\n", render_firewall_rule(rule)));
+    }
+    s.push_str("\t}\n");
+
+    // Output chain.
+    s.push_str("\tchain output {\n");
+    s.push_str(&format!(
+        "\t\ttype filter hook output priority 0; policy {};\n",
+        spec.default_outbound.verdict()
+    ));
+    s.push_str("\t\tct state established,related accept\n");
+    s.push_str("\t\toif \"lo\" accept\n");
+    for rule in spec
+        .rules
+        .iter()
+        .filter(|r| r.direction == FirewallDirection::Outbound)
+    {
+        s.push_str(&format!("\t\t{}\n", render_firewall_rule(rule)));
+    }
+    s.push_str("\t}\n");
+
+    s.push_str("}\n");
+    s
+}
+
+/// Apply a firewall ruleset. Renders nftables and pipes it into `nft -f -`.
+/// nftables is Linux-only: on any other OS (or if `nft` is missing) this returns
+/// a clear "firewall backend unavailable" error rather than panicking.
+pub async fn configure_firewall(spec: &ConfigureFirewallSpec) -> Result<CommandOutput> {
+    let ruleset = render_nftables(spec);
+
+    if !cfg!(target_os = "linux") {
+        bail!(
+            "firewall backend unavailable: nftables requires Linux (this node runs {})",
+            std::env::consts::OS
+        );
+    }
+
+    apply_nftables(&ruleset).await?;
+    Ok(CommandOutput {
+        message: Some(format!(
+            "applied firewall {} ({} rule(s); inbound policy {}, outbound policy {})",
+            spec.firewall_id,
+            spec.rules.len(),
+            spec.default_inbound.verdict(),
+            spec.default_outbound.verdict(),
+        )),
+        ..Default::default()
+    })
+}
+
+/// Pipe a ruleset into `nft -f -`. A missing `nft` binary is surfaced as
+/// "firewall backend unavailable" so the control plane can report it cleanly.
+async fn apply_nftables(ruleset: &str) -> Result<()> {
+    use tokio::io::AsyncWriteExt;
+    let mut child = tokio::process::Command::new("nft")
+        .arg("-f")
+        .arg("-")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                anyhow!("firewall backend unavailable: `nft` (nftables) not found in PATH")
+            } else {
+                anyhow!(e).context("spawning nft")
+            }
+        })?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(ruleset.as_bytes())
+            .await
+            .context("writing ruleset to nft stdin")?;
+        // Drop closes stdin so nft can proceed.
+    }
+
+    let out = child.wait_with_output().await.context("running nft")?;
+    if !out.status.success() {
+        bail!(
+            "nft rejected the ruleset: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        );
+    }
+    Ok(())
+}
+
+/* ------------------------------ load balancer ------------------------------ */
+
+/// Caddy `lb_policy` for an algorithm. Sticky sessions override with `cookie`.
+fn lb_policy(algorithm: LbAlgorithm, sticky: bool) -> &'static str {
+    if sticky {
+        return "cookie";
+    }
+    match algorithm {
+        LbAlgorithm::RoundRobin => "round_robin",
+        LbAlgorithm::LeastConn => "least_conn",
+        LbAlgorithm::IpHash => "ip_hash",
+    }
+}
+
+/// The Caddy site address for an LB spec: a bare `:port`, a plain-HTTP host, or a
+/// TLS-terminating host (auto-HTTPS via Let's Encrypt).
+fn lb_site_address(spec: &ProvisionLbSpec) -> String {
+    match (&spec.domain, spec.auto_https) {
+        (Some(d), true) if !d.is_empty() => d.clone(),
+        (Some(d), false) if !d.is_empty() => format!("http://{d}"),
+        _ => format!(":{}", spec.listen_port),
+    }
+}
+
+/// Render a Caddyfile for an LB spec. Pure and deterministic. Weighted targets
+/// are expanded by repeating the upstream `weight` times (capped) — Caddy's
+/// Caddyfile has no first-class weight, so repetition approximates it.
+pub fn render_caddyfile(spec: &ProvisionLbSpec) -> String {
+    let mut s = String::new();
+
+    // Global options: disable automatic HTTPS unless a managed domain asked for it.
+    if !spec.auto_https {
+        s.push_str("{\n\tauto_https off\n}\n\n");
+    }
+
+    let mut upstreams: Vec<String> = Vec::new();
+    for t in &spec.targets {
+        let reps = t.weight.clamp(1, 10);
+        for _ in 0..reps {
+            upstreams.push(t.address.clone());
+        }
+    }
+
+    s.push_str(&format!("{} {{\n", lb_site_address(spec)));
+    s.push_str(&format!("\treverse_proxy {} {{\n", upstreams.join(" ")));
+    s.push_str(&format!(
+        "\t\tlb_policy {}\n",
+        lb_policy(spec.algorithm, spec.sticky)
+    ));
+    s.push_str(&format!("\t\thealth_uri {}\n", spec.health_path));
+    s.push_str("\t}\n");
+    s.push_str("}\n");
+    s
+}
+
+/// Provision (or re-provision) a Caddy load-balancer container fronting the
+/// spec's targets. Writes a generated Caddyfile, mounts it, and starts
+/// `caddy:2-alpine` labelled `io.yourstack.lb=<id>`.
+pub async fn provision_lb(docker: &DockerClient, spec: &ProvisionLbSpec) -> Result<CommandOutput> {
+    if spec.targets.is_empty() {
+        bail!(
+            "cannot provision load balancer {}: no targets",
+            spec.load_balancer_id
+        );
+    }
+
+    let caddyfile = render_caddyfile(spec);
+    let dir = docker.data_dir().join("lb").join(&spec.load_balancer_id);
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .with_context(|| format!("creating LB config dir {}", dir.display()))?;
+    tokio::fs::write(dir.join("Caddyfile"), &caddyfile)
+        .await
+        .context("writing Caddyfile")?;
+
+    // Publish the listen port; add 80/443 when terminating TLS for a domain.
+    let mut ports: Vec<(u16, u16)> = vec![(spec.listen_port, spec.listen_port)];
+    if spec.auto_https && spec.domain.is_some() {
+        ports.push((80, 80));
+        ports.push((443, 443));
+    }
+
+    // Mount the config dir at Caddy's default config location; the image's default
+    // CMD runs `caddy run --config /etc/caddy/Caddyfile --adapter caddyfile`.
+    let binds = vec![format!("{}:/etc/caddy", dir.to_string_lossy())];
+
+    let container_id = run_container(
+        docker,
+        RunOpts {
+            name: &spec.container_name,
+            image: "caddy:2-alpine",
+            env: vec![],
+            labels: managed_labels(LABEL_LB, &spec.load_balancer_id),
+            cmd: None,
+            ports,
+            binds,
+            network: None,
+            nano_cpus: None,
+            memory_bytes: None,
+            restart: true,
+        },
+    )
+    .await?;
+
+    Ok(CommandOutput {
+        message: Some(format!(
+            "provisioned load balancer {} ({} target(s), {} on :{})",
+            spec.load_balancer_id,
+            spec.targets.len(),
+            lb_policy(spec.algorithm, spec.sticky),
+            spec.listen_port
+        )),
+        container_id: Some(container_id),
+        ..Default::default()
+    })
+}
+
+/// Stop and remove an LB container (and any stragglers carrying its label).
+pub async fn remove_lb(docker: &DockerClient, spec: &RemoveLbSpec) -> Result<CommandOutput> {
+    let _ = docker.remove_container(&spec.container_name, false).await;
+    let removed = remove_by_label(docker, LABEL_LB, &spec.load_balancer_id)
+        .await
+        .unwrap_or(0);
+    Ok(CommandOutput {
+        message: Some(format!(
+            "removed load balancer {} ({} container(s))",
+            spec.load_balancer_id,
+            removed.max(1)
+        )),
+        ..Default::default()
+    })
+}
+
+/* ----------------------------- node administration ------------------------- */
+
+/// Schedule a node reboot after `delaySeconds`. Reports "accepted" immediately;
+/// the reboot fires from a detached task so the result can be posted first.
+pub async fn node_reboot(spec: &NodeRebootSpec) -> Result<CommandOutput> {
+    let delay = spec.delay_seconds.max(0) as u64;
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(delay)).await;
+        if let Err(e) = run_reboot().await {
+            tracing::error!(error = %e, "reboot command failed");
+        }
+    });
+    Ok(CommandOutput {
+        message: Some(format!("reboot accepted; node will reboot in {delay}s")),
+        ..Default::default()
+    })
+}
+
+/// Issue the platform reboot command (`shutdown -r now` on Linux). Best-effort.
+#[allow(unreachable_code)]
+async fn run_reboot() -> Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        tokio::process::Command::new("shutdown")
+            .arg("-r")
+            .arg("now")
+            .status()
+            .await
+            .context("running shutdown -r now")?;
+        return Ok(());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        tokio::process::Command::new("shutdown")
+            .args(["/r", "/t", "0"])
+            .status()
+            .await
+            .context("running shutdown /r")?;
+        return Ok(());
+    }
+    // Other platforms: no supported reboot mechanism.
+    Ok(())
+}
+
+/// Prune unused Docker data. Honors `images`/`volumes`/`buildCache`; stopped
+/// containers are always pruned. Returns a summary of space reclaimed.
+pub async fn docker_prune(docker: &DockerClient, spec: &DockerPruneSpec) -> Result<CommandOutput> {
+    let engine = docker.engine();
+    let mut reclaimed: i64 = 0;
+    let mut parts: Vec<String> = Vec::new();
+
+    let c = engine
+        .prune_containers(None::<PruneContainersOptions<String>>)
+        .await
+        .context("pruning containers")?;
+    reclaimed += c.space_reclaimed.unwrap_or(0);
+    parts.push(format!(
+        "{} container(s)",
+        c.containers_deleted.map(|v| v.len()).unwrap_or(0)
+    ));
+
+    if spec.images {
+        let i = engine
+            .prune_images(None::<PruneImagesOptions<String>>)
+            .await
+            .context("pruning images")?;
+        reclaimed += i.space_reclaimed.unwrap_or(0);
+        parts.push(format!(
+            "{} image(s)",
+            i.images_deleted.map(|v| v.len()).unwrap_or(0)
+        ));
+    }
+
+    if spec.volumes {
+        let v = engine
+            .prune_volumes(None::<PruneVolumesOptions<String>>)
+            .await
+            .context("pruning volumes")?;
+        reclaimed += v.space_reclaimed.unwrap_or(0);
+        parts.push(format!(
+            "{} volume(s)",
+            v.volumes_deleted.map(|x| x.len()).unwrap_or(0)
+        ));
+    }
+
+    if spec.build_cache {
+        // bollard exposes no build-cache prune; the Docker CLI does. Best-effort.
+        let out = tokio::process::Command::new("docker")
+            .args(["builder", "prune", "-af"])
+            .output()
+            .await;
+        parts.push(match &out {
+            Ok(o) if o.status.success() => "build cache pruned".to_string(),
+            _ => "build cache prune skipped".to_string(),
+        });
+    }
+
+    let mut extra: BTreeMap<String, serde_json::Value> = BTreeMap::new();
+    extra.insert("spaceReclaimedBytes".to_string(), json!(reclaimed));
+
+    Ok(CommandOutput {
+        message: Some(format!(
+            "docker prune reclaimed {reclaimed} bytes ({})",
+            parts.join(", ")
+        )),
+        extra: Some(extra),
+        ..Default::default()
+    })
+}
+
+/// Resolve the agent-update download URL: the explicit `downloadUrl` if given,
+/// otherwise a versioned URL on the documented default release host, targeting
+/// this node's OS/arch. Pure.
+pub fn agent_download_url(version: &str, download_url: Option<&str>) -> String {
+    if let Some(u) = download_url {
+        if !u.is_empty() {
+            return u.to_string();
+        }
+    }
+    format!(
+        "https://downloads.yourstack.dev/agent/{version}/yourstack-agent-{}-{}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    )
+}
+
+/// Download the requested agent version, sanity-check the binary, stage it next
+/// to the running executable, and request a service restart via systemd.
+///
+/// Mechanism: the systemd unit `yourstack-agent.service` restarts the process;
+/// its `ExecStartPre` (documented in the deploy README) swaps `<exe>.new` over
+/// `<exe>` before start. If systemd is unavailable, the staged binary is left in
+/// place and the operator is told to restart manually — the agent never
+/// execs an unverified binary in-process.
+pub async fn agent_update(spec: &AgentUpdateSpec) -> Result<CommandOutput> {
+    let url = agent_download_url(&spec.version, spec.download_url.as_deref());
+
+    let resp = reqwest::get(&url)
+        .await
+        .with_context(|| format!("downloading agent from {url}"))?;
+    if !resp.status().is_success() {
+        bail!("agent download failed: {} returned {}", url, resp.status());
+    }
+    let bytes = resp.bytes().await.context("reading agent download body")?;
+
+    // Verify: non-empty and a plausible native executable (ELF on unix, MZ on
+    // Windows). This guards against downloading an error page as the "binary".
+    verify_agent_binary(&bytes)?;
+
+    let exe = std::env::current_exe().context("locating current executable")?;
+    let staged = exe.with_extension("new");
+    tokio::fs::write(&staged, &bytes)
+        .await
+        .with_context(|| format!("writing staged binary {}", staged.display()))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o755);
+        let _ = std::fs::set_permissions(&staged, perms);
+    }
+
+    // Request a restart; the service swaps the staged binary into place on start.
+    let restarted = tokio::process::Command::new("systemctl")
+        .args(["restart", "yourstack-agent"])
+        .status()
+        .await
+        .map(|s| s.success())
+        .unwrap_or(false);
+
+    Ok(CommandOutput {
+        message: Some(format!(
+            "downloaded agent {} ({} bytes) to {}; restart {}",
+            spec.version,
+            bytes.len(),
+            staged.display(),
+            if restarted {
+                "requested via systemd"
+            } else {
+                "pending (restart yourstack-agent manually)"
+            }
+        )),
+        ..Default::default()
+    })
+}
+
+/// Sanity-check a downloaded agent binary's magic bytes for the target platform.
+fn verify_agent_binary(bytes: &[u8]) -> Result<()> {
+    if bytes.is_empty() {
+        bail!("agent download is empty");
+    }
+    let ok = if cfg!(windows) {
+        bytes.starts_with(b"MZ")
+    } else {
+        bytes.starts_with(&[0x7f, b'E', b'L', b'F'])
+    };
+    if !ok {
+        bail!("downloaded agent binary failed verification (unexpected format)");
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1382,5 +1870,162 @@ mod tests {
         assert!(w.contains("mod['handler']"));
         assert!(!w.contains("__FILE__"));
         assert!(!w.contains("__FUNC__"));
+    }
+
+    use crate::protocol::{
+        ConfigureFirewallSpec, FirewallPolicy, FirewallRuleAction, FirewallRuleSpec, LbTargetSpec,
+        ProvisionLbSpec,
+    };
+
+    fn rule(
+        direction: FirewallDirection,
+        action: FirewallRuleAction,
+        protocol: FirewallProtocol,
+        port: Option<&str>,
+        cidr: &str,
+    ) -> FirewallRuleSpec {
+        FirewallRuleSpec {
+            direction,
+            action,
+            protocol,
+            port: port.map(|p| p.to_string()),
+            cidr: cidr.to_string(),
+            comment: None,
+        }
+    }
+
+    #[test]
+    fn nftables_sets_default_policies_and_baseline_allowances() {
+        let spec = ConfigureFirewallSpec {
+            firewall_id: "fw1".to_string(),
+            default_inbound: FirewallPolicy::Deny,
+            default_outbound: FirewallPolicy::Allow,
+            rules: vec![],
+        };
+        let out = render_nftables(&spec);
+        assert!(out.contains("table inet yourstack_fw {"));
+        // Idempotent re-apply: table is deleted before being recreated.
+        assert!(out.contains("delete table inet yourstack_fw"));
+        assert!(out.contains("hook input priority 0; policy drop;"));
+        assert!(out.contains("hook output priority 0; policy accept;"));
+        assert!(out.contains("ct state established,related accept"));
+        assert!(out.contains("iif \"lo\" accept"));
+    }
+
+    #[test]
+    fn nftables_renders_rules_by_direction_protocol_and_cidr() {
+        let spec = ConfigureFirewallSpec {
+            firewall_id: "fw2".to_string(),
+            default_inbound: FirewallPolicy::Deny,
+            default_outbound: FirewallPolicy::Deny,
+            rules: vec![
+                // Inbound: allow HTTPS from anywhere -> catch-all cidr omitted.
+                rule(
+                    FirewallDirection::Inbound,
+                    FirewallRuleAction::Allow,
+                    FirewallProtocol::Tcp,
+                    Some("443"),
+                    "0.0.0.0/0",
+                ),
+                // Inbound: allow SSH only from a subnet.
+                rule(
+                    FirewallDirection::Inbound,
+                    FirewallRuleAction::Allow,
+                    FirewallProtocol::Tcp,
+                    Some("22"),
+                    "10.0.0.0/8",
+                ),
+                // Outbound: deny a UDP range to a host.
+                rule(
+                    FirewallDirection::Outbound,
+                    FirewallRuleAction::Deny,
+                    FirewallProtocol::Udp,
+                    Some("8000-9000"),
+                    "192.168.1.5/32",
+                ),
+            ],
+        };
+        let out = render_nftables(&spec);
+        assert!(out.contains("tcp dport 443 accept"));
+        assert!(out.contains("ip saddr 10.0.0.0/8 tcp dport 22 accept"));
+        // Outbound uses daddr and a range.
+        assert!(out.contains("ip daddr 192.168.1.5/32 udp dport 8000-9000 drop"));
+    }
+
+    fn lb_spec(
+        algorithm: LbAlgorithm,
+        sticky: bool,
+        domain: Option<&str>,
+        auto: bool,
+    ) -> ProvisionLbSpec {
+        ProvisionLbSpec {
+            load_balancer_id: "lb1".to_string(),
+            container_name: "yourstack-lb-lb1".to_string(),
+            listen_port: 8080,
+            algorithm,
+            targets: vec![
+                LbTargetSpec {
+                    address: "10.0.0.1:3000".to_string(),
+                    weight: 1,
+                },
+                LbTargetSpec {
+                    address: "10.0.0.2:3000".to_string(),
+                    weight: 2,
+                },
+            ],
+            domain: domain.map(|d| d.to_string()),
+            auto_https: auto,
+            health_path: "/healthz".to_string(),
+            sticky,
+        }
+    }
+
+    #[test]
+    fn caddyfile_bare_port_expands_weighted_upstreams() {
+        let out = render_caddyfile(&lb_spec(LbAlgorithm::RoundRobin, false, None, false));
+        assert!(out.contains("auto_https off"));
+        assert!(out.starts_with("{\n\tauto_https off\n}\n\n:8080 {"));
+        assert!(out.contains("lb_policy round_robin"));
+        assert!(out.contains("health_uri /healthz"));
+        // weight 2 => address repeated twice; weight 1 => once.
+        assert!(out.contains("reverse_proxy 10.0.0.1:3000 10.0.0.2:3000 10.0.0.2:3000 {"));
+    }
+
+    #[test]
+    fn caddyfile_domain_autohttps_and_sticky() {
+        let out = render_caddyfile(&lb_spec(
+            LbAlgorithm::LeastConn,
+            true,
+            Some("app.example.com"),
+            true,
+        ));
+        // auto-HTTPS: no global auto_https-off block, site is the bare domain.
+        assert!(!out.contains("auto_https off"));
+        assert!(out.contains("app.example.com {"));
+        // sticky overrides the algorithm with a cookie policy.
+        assert!(out.contains("lb_policy cookie"));
+
+        // Plain HTTP with a domain uses the http:// scheme.
+        let http = render_caddyfile(&lb_spec(
+            LbAlgorithm::IpHash,
+            false,
+            Some("app.example.com"),
+            false,
+        ));
+        assert!(http.contains("http://app.example.com {"));
+        assert!(http.contains("lb_policy ip_hash"));
+    }
+
+    #[test]
+    fn agent_download_url_prefers_explicit_then_falls_back() {
+        assert_eq!(
+            agent_download_url("v2", Some("https://host/agent.bin")),
+            "https://host/agent.bin"
+        );
+        // Empty explicit URL is ignored in favour of the default host.
+        let def = agent_download_url("v2", Some(""));
+        assert!(def.starts_with("https://downloads.yourstack.dev/agent/v2/yourstack-agent-"));
+        let def2 = agent_download_url("latest", None);
+        assert!(def2.contains("/agent/latest/"));
     }
 }

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Wordmark } from '@/components/logo';
 import { useSession } from '@/lib/session';
 import { NAV_SECTIONS } from './nav';
+import { OrgSwitcher } from './org-switcher';
 import { WorkspaceSwitcher } from './workspace-switcher';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +31,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
       </div>
 
-      <WorkspaceSwitcher />
+      <div className="space-y-2">
+        <OrgSwitcher />
+        <WorkspaceSwitcher />
+      </div>
 
       <nav className="-mx-1 flex-1 space-y-4 overflow-y-auto px-1">
         {sections.map((section, i) => (

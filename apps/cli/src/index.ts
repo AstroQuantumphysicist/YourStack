@@ -11,6 +11,8 @@ import { registerLogs } from './commands/logs.js';
 import { registerApps } from './commands/apps.js';
 import { registerEnv } from './commands/env.js';
 import { registerRollback } from './commands/rollback.js';
+import { registerMcp } from './commands/mcp.js';
+import { registerApply } from './commands/apply.js';
 
 /** CLI version. Kept in sync with package.json. */
 const VERSION = '0.1.0';
@@ -18,12 +20,12 @@ const VERSION = '0.1.0';
 function buildProgram(): Command {
   const program = new Command();
   program
-    .name('yourstack')
-    .description('YourStack developer CLI — bring your own server, we turn it into a cloud.')
+    .name('yst')
+    .description('YourStack developer CLI (yst) — bring your own server, we turn it into a cloud.')
     .version(VERSION, '-v, --version', 'Print the CLI version')
     .option('--api-url <url>', 'YourStack API base URL (overrides config / YOURSTACK_API_URL)')
     .option('--token <token>', 'API token (overrides config / YOURSTACK_TOKEN)')
-    .showHelpAfterError(pc.dim('(run `yourstack --help` for usage)'));
+    .showHelpAfterError(pc.dim('(run `yst --help` for usage)'));
 
   // `version` subcommand in addition to the `-v/--version` flag.
   program
@@ -41,6 +43,8 @@ function buildProgram(): Command {
   registerApps(program);
   registerEnv(program);
   registerRollback(program);
+  registerApply(program);
+  registerMcp(program);
 
   return program;
 }

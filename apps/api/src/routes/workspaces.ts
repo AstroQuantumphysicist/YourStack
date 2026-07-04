@@ -1,4 +1,6 @@
 import type { FastifyInstance } from 'fastify';
+import type { PrismaClient } from '@yourstack/db';
+import { z } from 'zod';
 import {
   createWorkspaceSchema,
   inviteMemberSchema,
@@ -20,14 +22,28 @@ export default async function workspaceRoutes(app: FastifyInstance) {
 
   app.post('/workspaces', async (req) => {
     const user = requireUser(req);
-    const body = parse(createWorkspaceSchema, req.body);
+    const body = parse(createWorkspaceSchema.extend({ organizationId: z.string().optional() }), req.body);
     const slug = await uniqueSlug(prisma, body.slug ?? slugify(body.name));
+
+    // Every workspace belongs to an organization. Use the requested org (caller
+    // must be a member) or find-or-create the caller's personal org.
+    let organizationId: string;
+    if (body.organizationId) {
+      const member = await prisma.orgMember.findUnique({
+        where: { organizationId_userId: { organizationId: body.organizationId, userId: user.id } },
+      });
+      if (!member) throw Errors.forbidden('You are not a member of that organization');
+      organizationId = body.organizationId;
+    } else {
+      organizationId = await ensurePersonalOrg(prisma, user.id, user.name ?? user.email);
+    }
 
     const workspace = await prisma.workspace.create({
       data: {
         name: body.name,
         slug,
         planKey: 'dev',
+        organizationId,
         members: { create: { userId: user.id, role: 'owner' } },
       },
     });
@@ -198,11 +214,38 @@ export default async function workspaceRoutes(app: FastifyInstance) {
   });
 }
 
-async function uniqueSlug(prisma: import('@yourstack/db').PrismaClient, base: string): Promise<string> {
+async function uniqueSlug(prisma: PrismaClient, base: string): Promise<string> {
   let slug = base;
   let n = 1;
   while (await prisma.workspace.findUnique({ where: { slug } })) {
     slug = `${base}-${n++}`;
   }
   return slug;
+}
+
+async function uniqueOrgSlug(prisma: PrismaClient, base: string): Promise<string> {
+  let slug = base;
+  let n = 1;
+  while (await prisma.organization.findUnique({ where: { slug } })) slug = `${base}-${n++}`;
+  return slug;
+}
+
+/**
+ * Find (or lazily create) the caller's personal organization — the default
+ * tenant that owns a workspace created without an explicit organization.
+ */
+async function ensurePersonalOrg(prisma: PrismaClient, userId: string, label: string): Promise<string> {
+  const name = `${label} Org`;
+  const existing = await prisma.orgMember.findFirst({
+    where: { userId, role: 'owner', organization: { name, deletedAt: null } },
+    orderBy: { createdAt: 'asc' },
+    select: { organizationId: true },
+  });
+  if (existing) return existing.organizationId;
+
+  const slug = await uniqueOrgSlug(prisma, slugify(name));
+  const org = await prisma.organization.create({
+    data: { name, slug, members: { create: { userId, role: 'owner' } } },
+  });
+  return org.id;
 }
