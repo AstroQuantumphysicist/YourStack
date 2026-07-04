@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { Check, GitBranch, Github, Lock, Plus, RefreshCw, Webhook } from 'lucide-react';
-import type { GitRepositoryDTO } from '@noderail/shared';
+import type { GitRepositoryDTO } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
 import { useWorkspaceDeployments } from '@/lib/hooks';
 import { api, ApiError, type GithubRepo } from '@/lib/api';

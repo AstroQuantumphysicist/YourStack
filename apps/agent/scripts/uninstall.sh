@@ -1,16 +1,16 @@
 #!/bin/sh
-# NodeRail agent uninstaller. Stops and disables the service, then removes the
+# YourStack agent uninstaller. Stops and disables the service, then removes the
 # binary, unit, config, and system user. Data directory removal is opt-in.
 #
-#   PURGE_DATA=1 ./uninstall.sh    # also delete /var/lib/noderail
+#   PURGE_DATA=1 ./uninstall.sh    # also delete /var/lib/yourstack
 set -eu
 
-BIN_PATH="/usr/local/bin/noderail-agent"
-CONFIG_DIR="/etc/noderail"
-DATA_DIR="/var/lib/noderail"
-SERVICE_NAME="noderail-agent"
+BIN_PATH="/usr/local/bin/yourstack-agent"
+CONFIG_DIR="/etc/yourstack"
+DATA_DIR="/var/lib/yourstack"
+SERVICE_NAME="yourstack-agent"
 UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
-AGENT_USER="noderail"
+AGENT_USER="yourstack"
 
 log() { printf '\033[1;34m[uninstall]\033[0m %s\n' "$*"; }
 

@@ -12,23 +12,23 @@ describe('config round-trip', () => {
   let home: string;
   const savedHome = process.env.HOME;
   const savedUserProfile = process.env.USERPROFILE;
-  const savedApiUrl = process.env.NODERAIL_API_URL;
-  const savedToken = process.env.NODERAIL_TOKEN;
+  const savedApiUrl = process.env.YOURSTACK_API_URL;
+  const savedToken = process.env.YOURSTACK_TOKEN;
 
   beforeEach(async () => {
-    home = mkdtempSync(join(tmpdir(), 'noderail-cli-'));
+    home = mkdtempSync(join(tmpdir(), 'yourstack-cli-'));
     process.env.HOME = home;
     process.env.USERPROFILE = home;
-    delete process.env.NODERAIL_API_URL;
-    delete process.env.NODERAIL_TOKEN;
+    delete process.env.YOURSTACK_API_URL;
+    delete process.env.YOURSTACK_TOKEN;
     vi.resetModules();
   });
 
   afterEach(() => {
     restore('HOME', savedHome);
     restore('USERPROFILE', savedUserProfile);
-    restore('NODERAIL_API_URL', savedApiUrl);
-    restore('NODERAIL_TOKEN', savedToken);
+    restore('YOURSTACK_API_URL', savedApiUrl);
+    restore('YOURSTACK_TOKEN', savedToken);
   });
 
   it('saves and loads credentials', async () => {
@@ -37,14 +37,14 @@ describe('config round-trip', () => {
 
     await saveConfig({
       apiUrl: 'http://localhost:4000',
-      token: 'nr_test_token',
+      token: 'ys_test_token',
       user: { id: 'u1', email: 'a@b.co' },
       workspaceId: 'ws1',
     });
 
     const loaded = await loadConfig();
     expect(loaded.apiUrl).toBe('http://localhost:4000');
-    expect(loaded.token).toBe('nr_test_token');
+    expect(loaded.token).toBe('ys_test_token');
     expect(loaded.user).toEqual({ id: 'u1', email: 'a@b.co' });
     expect(loaded.workspaceId).toBe('ws1');
   });
@@ -58,17 +58,17 @@ describe('config round-trip', () => {
 
   it('lets environment variables override on-disk values', async () => {
     const { saveConfig, loadConfig } = await import('./config.js');
-    await saveConfig({ apiUrl: 'http://disk:4000', token: 'nr_disk' });
-    process.env.NODERAIL_API_URL = 'http://env:5000';
-    process.env.NODERAIL_TOKEN = 'nr_env';
+    await saveConfig({ apiUrl: 'http://disk:4000', token: 'ys_disk' });
+    process.env.YOURSTACK_API_URL = 'http://env:5000';
+    process.env.YOURSTACK_TOKEN = 'ys_env';
     const loaded = await loadConfig();
     expect(loaded.apiUrl).toBe('http://env:5000');
-    expect(loaded.token).toBe('nr_env');
+    expect(loaded.token).toBe('ys_env');
   });
 
   it('clears credentials', async () => {
     const { saveConfig, clearConfig, loadConfig, DEFAULT_API_URL } = await import('./config.js');
-    await saveConfig({ apiUrl: 'http://x:1', token: 'nr_x' });
+    await saveConfig({ apiUrl: 'http://x:1', token: 'ys_x' });
     await clearConfig();
     const loaded = await loadConfig();
     expect(loaded.apiUrl).toBe(DEFAULT_API_URL);

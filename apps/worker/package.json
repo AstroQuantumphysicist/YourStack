@@ -1,5 +1,5 @@
 {
-  "name": "@noderail/worker",
+  "name": "@yourstack/worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,10 +14,10 @@
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
-    "@noderail/config": "workspace:*",
-    "@noderail/db": "workspace:*",
-    "@noderail/security": "workspace:*",
-    "@noderail/shared": "workspace:*",
+    "@yourstack/config": "workspace:*",
+    "@yourstack/db": "workspace:*",
+    "@yourstack/security": "workspace:*",
+    "@yourstack/shared": "workspace:*",
     "@prisma/client": "^5.20.0",
     "bullmq": "^5.13.2",
     "ioredis": "5.4.1",

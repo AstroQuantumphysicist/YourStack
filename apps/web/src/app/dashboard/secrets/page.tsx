@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { KeyRound, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { ProjectDTO, SecretDTO } from '@noderail/shared';
-import { SecretScope } from '@noderail/shared';
+import type { ProjectDTO, SecretDTO } from '@yourstack/shared';
+import { SecretScope } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
 import { useWorkspaceApps } from '@/lib/hooks';
 import { api, ApiError } from '@/lib/api';

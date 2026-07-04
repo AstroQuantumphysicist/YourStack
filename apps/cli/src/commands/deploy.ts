@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { SSE_CHANNELS, TERMINAL_DEPLOYMENT_STATUSES, type DeploymentStatus } from '@noderail/shared';
+import { SSE_CHANNELS, TERMINAL_DEPLOYMENT_STATUSES, type DeploymentStatus } from '@yourstack/shared';
 import { requireClient, resolveAppId, type GlobalFlags } from '../lib/context.js';
 import { CliError } from '../lib/errors.js';
 import { info, statusColor, success } from '../lib/output.js';
@@ -30,7 +30,7 @@ export function registerDeploy(program: Command): void {
         success(`Deployment ${pc.bold(`v${version}`)} queued ${pc.dim(`(${deploymentId})`)}`);
 
         if (opts.follow === false) {
-          info(pc.dim(`Follow with: noderail logs --deployment ${deploymentId}`));
+          info(pc.dim(`Follow with: yourstack logs --deployment ${deploymentId}`));
           return;
         }
 
@@ -87,7 +87,7 @@ export function registerDeploy(program: Command): void {
         throw new CliError(
           `Deployment ${finalStatus ? `ended as "${finalStatus}"` : 'did not reach a running state'}.`,
           1,
-          `Inspect logs: noderail logs --deployment ${deploymentId}`,
+          `Inspect logs: yourstack logs --deployment ${deploymentId}`,
         );
       },
     );

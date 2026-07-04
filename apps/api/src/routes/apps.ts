@@ -10,8 +10,8 @@ import {
   type RollbackJob,
   type AppFramework,
   type DeploymentStrategy,
-} from '@noderail/shared';
-import { AuditAction } from '@noderail/security';
+} from '@yourstack/shared';
+import { AuditAction } from '@yourstack/security';
 import { requirePermission } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
@@ -21,7 +21,7 @@ import { triggerDeployment } from '../services/deployment.service.js';
 import { createCommand } from '../services/command.service.js';
 
 /** Resolve the workspace id that owns an app (through project). */
-async function appWorkspace(prisma: import('@noderail/db').PrismaClient, appId: string) {
+async function appWorkspace(prisma: import('@yourstack/db').PrismaClient, appId: string) {
   const app = await prisma.app.findFirst({
     where: { id: appId, deletedAt: null },
     include: { project: true },
@@ -148,7 +148,7 @@ export default async function appRoutes(app: FastifyInstance) {
         appId: found.id,
         payload: {
           type: CommandType.REMOVE_APP,
-          spec: { appId: found.id, containerName: `noderail-${found.id}`, removeVolumes: false, removeImages: false },
+          spec: { appId: found.id, containerName: `yourstack-${found.id}`, removeVolumes: false, removeImages: false },
         },
       }).catch(() => undefined);
     }
@@ -198,7 +198,7 @@ export default async function appRoutes(app: FastifyInstance) {
     const cmd = await createCommand(prisma, realtime, {
       nodeId: found.nodeId,
       appId: found.id,
-      payload: { type: CommandType.RESTART_APP, spec: { appId: found.id, containerName: `noderail-${found.id}` } },
+      payload: { type: CommandType.RESTART_APP, spec: { appId: found.id, containerName: `yourstack-${found.id}` } },
     });
     await audit({ workspaceId, actorId: req.user!.id, actorEmail: req.user!.email, action: AuditAction.APP_RESTART, targetType: 'app', targetId: id });
     return { commandId: cmd.id };
@@ -213,7 +213,7 @@ export default async function appRoutes(app: FastifyInstance) {
     const cmd = await createCommand(prisma, realtime, {
       nodeId: found.nodeId,
       appId: found.id,
-      payload: { type: CommandType.STOP_APP, spec: { appId: found.id, containerName: `noderail-${found.id}`, timeoutSeconds: 10 } },
+      payload: { type: CommandType.STOP_APP, spec: { appId: found.id, containerName: `yourstack-${found.id}`, timeoutSeconds: 10 } },
     });
     await prisma.app.update({ where: { id }, data: { status: 'stopped' } });
     await audit({ workspaceId, actorId: req.user!.id, actorEmail: req.user!.email, action: AuditAction.APP_STOP, targetType: 'app', targetId: id });

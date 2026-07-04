@@ -1,6 +1,6 @@
-// NodeRail control-plane database schema.
+// YourStack control-plane database schema.
 // Postgres + Prisma. Status columns use native Prisma enums whose values match
-// the string unions in @noderail/shared/enums.ts exactly.
+// the string unions in @yourstack/shared/enums.ts exactly.
 
 generator client {
   provider = "prisma-client-js"

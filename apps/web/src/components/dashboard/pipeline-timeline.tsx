@@ -1,6 +1,6 @@
 import { Check, Circle, Loader2, Minus, X } from 'lucide-react';
-import type { PipelineRunDTO } from '@noderail/shared';
-import { StageStatus } from '@noderail/shared';
+import type { PipelineRunDTO } from '@yourstack/shared';
+import { StageStatus } from '@yourstack/shared';
 import { cn } from '@/lib/utils';
 
 const stageIcon = {

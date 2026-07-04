@@ -18,12 +18,12 @@ const VERSION = '0.1.0';
 function buildProgram(): Command {
   const program = new Command();
   program
-    .name('noderail')
-    .description('NodeRail developer CLI — bring your own server, we turn it into a cloud.')
+    .name('yourstack')
+    .description('YourStack developer CLI — bring your own server, we turn it into a cloud.')
     .version(VERSION, '-v, --version', 'Print the CLI version')
-    .option('--api-url <url>', 'NodeRail API base URL (overrides config / NODERAIL_API_URL)')
-    .option('--token <token>', 'API token (overrides config / NODERAIL_TOKEN)')
-    .showHelpAfterError(pc.dim('(run `noderail --help` for usage)'));
+    .option('--api-url <url>', 'YourStack API base URL (overrides config / YOURSTACK_API_URL)')
+    .option('--token <token>', 'API token (overrides config / YOURSTACK_TOKEN)')
+    .showHelpAfterError(pc.dim('(run `yourstack --help` for usage)'));
 
   // `version` subcommand in addition to the `-v/--version` flag.
   program
@@ -62,10 +62,10 @@ function handleError(err: unknown): never {
   }
   const message = err instanceof Error ? err.message : String(err);
   errorLine(message);
-  if (process.env.NODERAIL_DEBUG && err instanceof Error && err.stack) {
+  if (process.env.YOURSTACK_DEBUG && err instanceof Error && err.stack) {
     info(pc.dim(err.stack));
   } else {
-    info(pc.dim('Set NODERAIL_DEBUG=1 for a full stack trace.'));
+    info(pc.dim('Set YOURSTACK_DEBUG=1 for a full stack trace.'));
   }
   process.exit(1);
 }

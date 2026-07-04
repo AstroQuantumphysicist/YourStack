@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { createSecretSchema, updateSecretSchema, Permission } from '@noderail/shared';
-import { AuditAction } from '@noderail/security';
+import { createSecretSchema, updateSecretSchema, Permission } from '@yourstack/shared';
+import { AuditAction } from '@yourstack/security';
 import { requirePermission } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
@@ -8,7 +8,7 @@ import { toSecretDTO } from '../lib/dto.js';
 
 /** Resolve the workspace that owns a secret's scope target. */
 async function resolveScopeWorkspace(
-  prisma: import('@noderail/db').PrismaClient,
+  prisma: import('@yourstack/db').PrismaClient,
   input: { scope: string; projectId?: string; appId?: string; environmentId?: string },
 ): Promise<{ workspaceId: string; projectId: string | null; appId: string | null }> {
   if (input.scope === 'project') {

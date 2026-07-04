@@ -1,14 +1,14 @@
-# NodeRail agent configuration.
+# YourStack agent configuration.
 #
-# On Linux this file lives at /etc/noderail/agent.toml and is owned by the
-# `noderail` user with 0600 permissions (it holds secrets). The `register`
+# On Linux this file lives at /etc/yourstack/agent.toml and is owned by the
+# `yourstack` user with 0600 permissions (it holds secrets). The `register`
 # subcommand writes node_id / agent_token / command_verify_key for you, so you
 # normally only need to set api_url before registering.
 
 # Base URL of the control-plane API.
-api_url = "https://api.noderail.dev"
+api_url = "https://api.yourstack.dev"
 
-# Populated automatically by `noderail-agent register` — leave blank initially.
+# Populated automatically by `yourstack-agent register` — leave blank initially.
 node_id = ""
 agent_token = ""
 command_verify_key = ""
@@ -17,7 +17,7 @@ command_verify_key = ""
 # region = "us-east"
 
 # Working directory for git clones, build contexts, and generated Caddyfiles.
-data_dir = "/var/lib/noderail"
+data_dir = "/var/lib/yourstack"
 
 # Optional free-form labels.
 [labels]

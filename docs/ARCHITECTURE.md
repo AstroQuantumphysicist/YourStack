@@ -1,6 +1,6 @@
-# NodeRail Architecture
+# YourStack Architecture
 
-NodeRail is split into a **control plane** (managed, multi-tenant) and a **data
+YourStack is split into a **control plane** (managed, multi-tenant) and a **data
 plane** (user-owned servers). This document explains the components, the node
 command protocol, the deployment lifecycle, the CI/CD pipeline stages, the
 realtime layer, and the data model.
@@ -25,9 +25,9 @@ except for its datastores.
 | **Redis** | — | BullMQ queues **and** pub/sub bus for SSE fan-out |
 
 The API and worker are TypeScript, bundled by **tsup** into a single ESM
-`dist/index.js`. Internal `@noderail/*` packages are inlined into the bundle;
+`dist/index.js`. Internal `@yourstack/*` packages are inlined into the bundle;
 only `@prisma/client` is kept external (its native engine can't be bundled). The
-Prisma client is generated with `pnpm --filter @noderail/db generate` and needs
+Prisma client is generated with `pnpm --filter @yourstack/db generate` and needs
 `openssl` at runtime.
 
 ### Data plane
@@ -59,12 +59,12 @@ register ──▶ heartbeat ──▶ poll commands ──▶ execute ──▶
 
 ### 2.1 Register — `POST /v1/agent/register`
 
-- **Auth:** the one-time **join token** (`nrj_…`), not an agent token.
+- **Auth:** the one-time **join token** (`ysj_…`), not an agent token.
 - Body (`nodeRegisterSchema`): `{ joinToken, name, telemetry }` where telemetry
   includes `agentVersion, protocolVersion, os, arch, cpuCores, memoryTotalMb,
   diskTotalMb, dockerVersion?, publicIp?`.
 - The API validates the join token (SHA-256 hash lookup, unused, unexpired),
-  mints an **agent token** (`nra_…`, 40 bytes) and a **command key** (32 random
+  mints an **agent token** (`ysa_…`, 40 bytes) and a **command key** (32 random
   bytes, hex), creates the `Node` (status `online`), marks the join token used,
   and audits `node.register`.
 - **Response:** `{ nodeId, agentToken, commandVerifyKey, heartbeatIntervalMs }`.
@@ -198,7 +198,7 @@ Key mechanics:
 
 - **Enqueue** (`createDeployment`): computes `version = last + 1`, creates the
   `Deployment` (`queued`), sets `App.status = building`, increments the daily
-  `deployments` `UsageRecord`, enqueues a `DeployJob` on `noderail.deploy`
+  `deployments` `UsageRecord`, enqueues a `DeployJob` on `yourstack.deploy`
   (`jobId = deploymentId`), publishes `deployment.created`. Returns null if the
   app has no node assigned.
 - **Deploy processor** (`apps/worker/src/processors/deploy.ts`): creates a
@@ -211,7 +211,7 @@ Key mechanics:
   the deployment to `running`, supersedes the previous running deployment, and
   sets `App.currentDeploymentId`/`nodeId`. A failed/timed-out result marks the
   deployment and app `failed` and writes a system error log.
-- **Rollback** (`noderail.rollback`): creates a new deployment from the target's
+- **Rollback** (`yourstack.rollback`): creates a new deployment from the target's
   `specSnapshot` **plus freshly resolved secrets**, dispatches a signed
   `ROLLBACK_DEPLOYMENT` command, and finalizes through the same path.
 - **Safety-net healthcheck**: if a deployment is still non-terminal 5 minutes
@@ -252,7 +252,7 @@ out across every API instance using one Redis channel.
 - **`RealtimeHub`** (`apps/api/src/realtime/hub.ts`) holds two ioredis
   connections. Any process (API **or** worker) calls
   `publish(channel, type, data)`, which publishes JSON `{channel, type, data}` to
-  the single global Redis channel **`noderail:events`**. Every API instance's
+  the single global Redis channel **`yourstack:events`**. Every API instance's
   subscriber receives it and dispatches locally to the SSE clients subscribed to
   that logical `channel`.
 - **`GET /v1/events?channel=<kind:id>`** authorizes the channel, then streams
@@ -279,13 +279,13 @@ out across every API instance using one Redis channel.
 
 | Queue | Name | Concurrency | Purpose |
 | --- | --- | --- | --- |
-| DEPLOY | `noderail.deploy` | 4 | Run the deployment pipeline |
-| WEBHOOK | `noderail.webhook` | 8 | Process GitHub push/PR events |
-| HEALTHCHECK | `noderail.healthcheck` | 8 | Safety-net deployment health checks |
-| ROLLBACK | `noderail.rollback` | 4 | Roll back to a prior deployment |
-| DOMAIN | `noderail.domain` | 4 | DNS verification + domain configuration |
-| MAINTENANCE | `noderail.maintenance` | 2 | Scheduled housekeeping |
-| PIPELINE | `noderail.pipeline` | — | Name reserved; pipeline runs inline in the deploy processor |
+| DEPLOY | `yourstack.deploy` | 4 | Run the deployment pipeline |
+| WEBHOOK | `yourstack.webhook` | 8 | Process GitHub push/PR events |
+| HEALTHCHECK | `yourstack.healthcheck` | 8 | Safety-net deployment health checks |
+| ROLLBACK | `yourstack.rollback` | 4 | Roll back to a prior deployment |
+| DOMAIN | `yourstack.domain` | 4 | DNS verification + domain configuration |
+| MAINTENANCE | `yourstack.maintenance` | 2 | Scheduled housekeeping |
+| PIPELINE | `yourstack.pipeline` | — | Name reserved; pipeline runs inline in the deploy processor |
 
 Repeatable **maintenance** jobs: `node_liveness` (30s), `log_retention` (1h),
 `cleanup` (1h; expired sessions/join tokens, old heartbeats), `usage_rollup`
@@ -296,7 +296,7 @@ Repeatable **maintenance** jobs: `node_liveness` (30s), `log_retention` (1h),
 ## 7. Data model summary
 
 Postgres via Prisma (`packages/db/prisma/schema.prisma`). Native enums mirror
-`@noderail/shared/enums.ts` exactly. Core entities and relations:
+`@yourstack/shared/enums.ts` exactly. Core entities and relations:
 
 - **User** ← OAuthAccount, Session, WorkspaceMember, ApiToken, AuditLog. Flag
   `isPlatformAdmin`.

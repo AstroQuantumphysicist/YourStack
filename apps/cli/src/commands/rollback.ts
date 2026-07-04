@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
-import type { DeploymentDTO } from '@noderail/shared';
+import type { DeploymentDTO } from '@yourstack/shared';
 import { requireClient, resolveAppId, type GlobalFlags } from '../lib/context.js';
 import { CliError } from '../lib/errors.js';
 import { info, statusColor, success, timeAgo } from '../lib/output.js';
@@ -52,7 +52,7 @@ export function registerRollback(program: Command): void {
 
       await client.rollback(appId, target.id);
       success(`Rollback to ${pc.bold(`v${target.version}`)} queued ${pc.dim(`(${target.id})`)}`);
-      info(pc.dim(`Follow with: noderail logs --deployment ${target.id}`));
+      info(pc.dim(`Follow with: yourstack logs --deployment ${target.id}`));
     });
 }
 

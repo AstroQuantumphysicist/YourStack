@@ -19,9 +19,9 @@ use serde::{Deserialize, Serialize};
 pub const AGENT_PROTOCOL_VERSION: i64 = 1;
 
 /// Docker label namespace used to mark and identify agent-managed resources.
-pub const LABEL_MANAGED: &str = "io.noderail.managed";
-pub const LABEL_APP: &str = "io.noderail.app";
-pub const LABEL_DEPLOYMENT: &str = "io.noderail.deployment";
+pub const LABEL_MANAGED: &str = "io.yourstack.managed";
+pub const LABEL_APP: &str = "io.yourstack.app";
+pub const LABEL_DEPLOYMENT: &str = "io.yourstack.deployment";
 
 /* ------------------------------- registration ------------------------------ */
 

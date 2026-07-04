@@ -900,30 +900,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "noderail-agent"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64",
- "bollard",
- "clap",
- "dirs",
- "futures-util",
- "hex",
- "hmac",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "sysinfo",
- "thiserror 2.0.18",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "ntapi"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2397,6 +2373,30 @@ dependencies = [
  "quote",
  "syn",
  "synstructure",
+]
+
+[[package]]
+name = "yourstack-agent"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64",
+ "bollard",
+ "clap",
+ "dirs",
+ "futures-util",
+ "hex",
+ "hmac",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sysinfo",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

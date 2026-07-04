@@ -7,8 +7,8 @@ import {
   HEARTBEAT_INTERVAL_MS,
   SSE_CHANNELS,
   type NodeCommand as NodeCommandContract,
-} from '@noderail/shared';
-import { generateAgentToken, generateCommandKey, hashToken, verifyToken, AuditAction } from '@noderail/security';
+} from '@yourstack/shared';
+import { generateAgentToken, generateCommandKey, hashToken, verifyToken, AuditAction } from '@yourstack/security';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
 import { bearerToken } from '../lib/auth.js';
@@ -17,7 +17,7 @@ import { applyCommandResult } from '../services/command-result.service.js';
 /** Authenticate the agent via its Bearer token; attaches req.node. */
 async function authenticateNode(app: FastifyInstance, req: FastifyRequest): Promise<void> {
   const token = bearerToken(req);
-  if (!token || !token.startsWith('nra_')) throw Errors.unauthorized('Agent token required');
+  if (!token || !token.startsWith('ysa_')) throw Errors.unauthorized('Agent token required');
   const hash = hashToken(token);
   const node = await app.ctx.prisma.node.findUnique({
     where: { agentTokenHash: hash },
@@ -218,7 +218,7 @@ export default async function agentRoutes(app: FastifyInstance) {
 
 /** Atomically move queued commands to `accepted` and return the signed envelopes. */
 async function claimCommands(
-  prisma: import('@noderail/db').PrismaClient,
+  prisma: import('@yourstack/db').PrismaClient,
   nodeId: string,
 ): Promise<NodeCommandContract[]> {
   const queued = await prisma.nodeCommand.findMany({

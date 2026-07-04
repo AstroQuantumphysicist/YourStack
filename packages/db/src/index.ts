@@ -2,12 +2,12 @@ import { PrismaClient } from '@prisma/client';
 
 /**
  * Singleton Prisma client. In dev with hot-reload we cache it on globalThis to
- * avoid exhausting connections. Services import { prisma } from '@noderail/db'.
+ * avoid exhausting connections. Services import { prisma } from '@yourstack/db'.
  */
-const globalForPrisma = globalThis as unknown as { __noderailPrisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as { __yourstackPrisma?: PrismaClient };
 
 export const prisma =
-  globalForPrisma.__noderailPrisma ??
+  globalForPrisma.__yourstackPrisma ??
   new PrismaClient({
     log:
       process.env.NODE_ENV === 'development'
@@ -16,7 +16,7 @@ export const prisma =
   });
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.__noderailPrisma = prisma;
+  globalForPrisma.__yourstackPrisma = prisma;
 }
 
 export type { PrismaClient } from '@prisma/client';

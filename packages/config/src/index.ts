@@ -42,7 +42,7 @@ const baseSchema = z.object({
 
   PUBLIC_API_URL: z.string().url().default('http://localhost:4000'),
   PUBLIC_WEB_URL: z.string().url().default('http://localhost:3000'),
-  BASE_PREVIEW_DOMAIN: z.string().default('preview.noderail.local'),
+  BASE_PREVIEW_DOMAIN: z.string().default('preview.yourstack.local'),
 
   ADMIN_EMAILS: csv,
   CORS_ORIGINS: csv,

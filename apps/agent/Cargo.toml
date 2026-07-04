@@ -1,14 +1,14 @@
 [package]
-name = "noderail-agent"
+name = "yourstack-agent"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.80"
-description = "NodeRail node agent: registers a bring-your-own server with the control plane, reports telemetry, and executes signed, typed deployment commands via Docker."
+description = "YourStack node agent: registers a bring-your-own server with the control plane, reports telemetry, and executes signed, typed deployment commands via Docker."
 license = "MIT"
 publish = false
 
 [[bin]]
-name = "noderail-agent"
+name = "yourstack-agent"
 path = "src/main.rs"
 
 [dependencies]

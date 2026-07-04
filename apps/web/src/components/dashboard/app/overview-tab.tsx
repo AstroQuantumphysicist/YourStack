@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import useSWR from 'swr';
 import { Cpu, GitBranch, MemoryStick, Network, Server } from 'lucide-react';
-import type { AppDTO, DeploymentDTO, NodeDTO } from '@noderail/shared';
+import type { AppDTO, DeploymentDTO, NodeDTO } from '@yourstack/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { formatMb, timeAgo, shortId } from '@/lib/format';

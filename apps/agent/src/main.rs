@@ -1,7 +1,7 @@
-//! NodeRail node agent.
+//! YourStack node agent.
 //!
 //! A single static binary that a "bring your own server" operator installs on
-//! their machine. It registers with the NodeRail control plane using a one-time
+//! their machine. It registers with the YourStack control plane using a one-time
 //! join token, then runs as a daemon: reporting telemetry, long-polling for
 //! cryptographically-signed typed commands, and executing them against Docker.
 //!
@@ -30,12 +30,12 @@ use crate::protocol::NodeRegisterRequest;
 
 #[derive(Parser)]
 #[command(
-    name = "noderail-agent",
+    name = "yourstack-agent",
     version,
-    about = "NodeRail node agent — registers a server and executes signed deployment commands"
+    about = "YourStack node agent — registers a server and executes signed deployment commands"
 )]
 struct Cli {
-    /// Override the config file path (defaults to /etc/noderail/agent.toml on
+    /// Override the config file path (defaults to /etc/yourstack/agent.toml on
     /// Linux, else ./agent.toml).
     #[arg(long, global = true)]
     config: Option<PathBuf>,
@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
     match cli.command.unwrap_or(Command::Run) {
         Command::Version => {
             println!(
-                "noderail-agent {} (protocol v{})",
+                "yourstack-agent {} (protocol v{})",
                 env!("CARGO_PKG_VERSION"),
                 protocol::AGENT_PROTOCOL_VERSION
             );
@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
             let path = cli.config.unwrap_or_else(dev_config_path);
             let cfg = Config::load(&path).with_context(|| {
                 format!(
-                    "loading dev config at {} (run `noderail-agent register` first)",
+                    "loading dev config at {} (run `yourstack-agent register` first)",
                     path.display()
                 )
             })?;
@@ -165,7 +165,7 @@ async fn register(
 fn init_tracing(verbose: bool) {
     use tracing_subscriber::{fmt, EnvFilter};
     let default = if verbose { "debug" } else { "info" };
-    let filter = EnvFilter::try_from_env("NODERAIL_LOG")
+    let filter = EnvFilter::try_from_env("YOURSTACK_LOG")
         .or_else(|_| EnvFilter::try_new(default))
         .unwrap_or_else(|_| EnvFilter::new("info"));
     fmt().with_env_filter(filter).with_target(false).init();

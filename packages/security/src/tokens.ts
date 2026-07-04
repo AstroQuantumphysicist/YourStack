@@ -6,7 +6,7 @@ import {
   API_TOKEN_PREFIX,
   JOIN_TOKEN_BYTES,
   JOIN_TOKEN_PREFIX,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 
 /** URL-safe base64 without padding. */
 function b64url(buf: Buffer): string {

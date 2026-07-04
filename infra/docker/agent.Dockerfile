@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # =============================================================================
-# NodeRail node agent (Rust) — OPTIONAL dev image (compose profile: nodes).
+# YourStack node agent (Rust) — OPTIONAL dev image (compose profile: nodes).
 #
 # The agent normally runs on a user's own server as a signed binary, NOT in the
 # control-plane stack. This image exists so contributors can exercise the full
@@ -28,8 +28,8 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates \
  && rm -rf /var/lib/apt/lists/*
-COPY --from=build /build/target/release/noderail-agent /usr/local/bin/noderail-agent
+COPY --from=build /build/target/release/yourstack-agent /usr/local/bin/yourstack-agent
 ENV RUST_LOG=info
 # reqwest uses rustls (no OpenSSL runtime dependency needed).
-ENTRYPOINT ["/usr/local/bin/noderail-agent"]
+ENTRYPOINT ["/usr/local/bin/yourstack-agent"]
 CMD ["run"]

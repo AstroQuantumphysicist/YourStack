@@ -1,5 +1,5 @@
-import type { PrismaClient, NodeCommand } from '@noderail/db';
-import { CommandType, SSE_CHANNELS, type CommandResult } from '@noderail/shared';
+import type { PrismaClient, NodeCommand } from '@yourstack/db';
+import { CommandType, SSE_CHANNELS, type CommandResult } from '@yourstack/shared';
 import type { RealtimeHub } from '../realtime/hub.js';
 
 type ResultInput = Omit<CommandResult, 'commandId'>;

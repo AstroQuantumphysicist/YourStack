@@ -1,5 +1,5 @@
-import { QUEUE_NAMES, SSE_CHANNELS, type DeployJob } from '@noderail/shared';
-import type { App } from '@noderail/db';
+import { QUEUE_NAMES, SSE_CHANNELS, type DeployJob } from '@yourstack/shared';
+import type { App } from '@yourstack/db';
 import { publish, type WorkerContext } from '../context.js';
 
 /** Create a Deployment row and enqueue it for the deploy processor. */

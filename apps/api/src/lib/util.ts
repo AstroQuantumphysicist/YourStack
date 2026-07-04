@@ -1,4 +1,4 @@
-import { MAX_PAGE_SIZE } from '@noderail/shared';
+import { MAX_PAGE_SIZE } from '@yourstack/shared';
 
 export function slugify(input: string): string {
   return input

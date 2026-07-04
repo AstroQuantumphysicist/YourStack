@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
-import { API_VERSION } from '@noderail/shared';
-import { loadConfig } from '@noderail/config';
+import { API_VERSION } from '@yourstack/shared';
+import { loadConfig } from '@yourstack/config';
 import { createContext, type AppContext } from './context.js';
 import securityPlugin from './plugins/security.js';
 import authPlugin from './plugins/auth.js';

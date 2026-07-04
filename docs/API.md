@@ -1,6 +1,6 @@
-# NodeRail API Reference
+# YourStack API Reference
 
-The NodeRail control-plane exposes a REST API (Fastify). This document covers
+The YourStack control-plane exposes a REST API (Fastify). This document covers
 authentication, conventions, every resource's endpoints, the agent protocol, and
 the realtime SSE channel.
 
@@ -21,9 +21,9 @@ Three credential types (all stored server-side only as SHA-256 hashes):
 
 | Credential | How it's sent | Notes |
 | --- | --- | --- |
-| **Session cookie** | `Cookie: nr_session=<token>` | Issued by GitHub OAuth / dev-login. 30-day TTL. `httpOnly`, `sameSite=lax`, `secure` in prod. |
-| **Personal API token** | `Authorization: Bearer nr_<token>` | Created per user/workspace; supports expiry + revocation. |
-| **Agent token** | `Authorization: Bearer nra_<token>` | Per-node; only accepted on `/v1/agent/*`. |
+| **Session cookie** | `Cookie: ys_session=<token>` | Issued by GitHub OAuth / dev-login. 30-day TTL. `httpOnly`, `sameSite=lax`, `secure` in prod. |
+| **Personal API token** | `Authorization: Bearer ys_<token>` | Created per user/workspace; supports expiry + revocation. |
+| **Agent token** | `Authorization: Bearer ysa_<token>` | Per-node; only accepted on `/v1/agent/*`. |
 
 Auth resolution is non-rejecting: `req.user` is populated if a valid session or
 API token is present, and individual routes enforce authorization with
@@ -34,7 +34,7 @@ API token is present, and individual routes enforce authorization with
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| GET | `/v1/auth/github` | none | Begin GitHub OAuth (sets `nr_oauth_state` cookie). |
+| GET | `/v1/auth/github` | none | Begin GitHub OAuth (sets `ys_oauth_state` cookie). |
 | GET | `/v1/auth/github/callback` | none | OAuth callback; upserts user + encrypted token, creates session, redirects to `<WEB>/dashboard`. Audits `auth.login`. |
 | POST | `/v1/auth/dev-login` | none | **Disabled in production.** Body `{ email, name? }`; upserts user (admin if email ∈ `ADMIN_EMAILS`), creates session. |
 | GET | `/v1/auth/me` | user | `{ user, workspaces: [{ ...membership, role }] }`. |
@@ -223,8 +223,8 @@ All guarded by `requirePlatformAdmin` (identity ∈ `ADMIN_EMAILS`).
 | --- | --- | --- |
 | GET | `/health` | Liveness: `{ status: 'ok', service: 'api', time }`. Used by Railway/Docker healthchecks. |
 | GET | `/ready` | Readiness: checks Postgres (`SELECT 1`) + Redis (`PING`). `200 { status:'ready', checks }` or `503 { status:'degraded', checks }`. |
-| GET | `/version` | `{ service: 'noderail-api', protocolVersion: 1 }`. |
-| GET | `/metrics` | Prometheus text exposition (`text/plain; version=0.0.4`). Gauges: `noderail_process_resident_memory_bytes`, `noderail_process_uptime_seconds`, `noderail_nodes_total`, `noderail_nodes_online`, `noderail_apps_running`, `noderail_commands_queued`. |
+| GET | `/version` | `{ service: 'yourstack-api', protocolVersion: 1 }`. |
+| GET | `/metrics` | Prometheus text exposition (`text/plain; version=0.0.4`). Gauges: `yourstack_process_resident_memory_bytes`, `yourstack_process_uptime_seconds`, `yourstack_nodes_total`, `yourstack_nodes_online`, `yourstack_apps_running`, `yourstack_commands_queued`. |
 
 ---
 
@@ -232,7 +232,7 @@ All guarded by `requirePlatformAdmin` (identity ∈ `ADMIN_EMAILS`).
 
 For node agents only. Full semantics in
 [ARCHITECTURE.md §2](./ARCHITECTURE.md#2-node-command-protocol). Auth is the
-one-time join token for `register`, then the Bearer agent token (`nra_…`).
+one-time join token for `register`, then the Bearer agent token (`ysa_…`).
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
@@ -304,15 +304,15 @@ event as `event: <type>\ndata: <json>\n\n`, with a keep-alive comment every 20s.
 **Event types**: `node.registered`, `node.heartbeat`, `node.status`,
 `log.runtime`, `log.build`, `deployment.created`, `deployment.status`,
 `domain.status`, `command.queued`, `command.update`. Events are fanned out across
-all API instances via a single Redis pub/sub channel (`noderail:events`).
+all API instances via a single Redis pub/sub channel (`yourstack:events`).
 
 ---
 
 ## OpenAPI / Swagger
 
-- **`GET /openapi.json`** — OpenAPI **3.1.0**. `info.title = "NodeRail API"`,
+- **`GET /openapi.json`** — OpenAPI **3.1.0**. `info.title = "YourStack API"`,
   `version = "0.1.0"`, `servers: [{ url: '/v1' }]`. Security schemes:
-  `sessionCookie` (apiKey cookie `nr_session`) and `bearerToken` (http bearer,
-  personal `nr_…` token). Tags are derived from the second path segment; the spec
+  `sessionCookie` (apiKey cookie `ys_session`) and `bearerToken` (http bearer,
+  personal `ys_…` token). Tags are derived from the second path segment; the spec
   is generated from the live route table.
 - **`GET /docs`** — Swagger UI pointed at `/openapi.json`.

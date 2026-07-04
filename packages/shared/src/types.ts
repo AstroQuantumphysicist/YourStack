@@ -15,7 +15,7 @@ import type {
 
 /**
  * Serialized DTO shapes returned by the API. These are hand-authored (rather
- * than derived from Prisma) so the web and CLI can depend on @noderail/shared
+ * than derived from Prisma) so the web and CLI can depend on @yourstack/shared
  * without pulling in the database client.
  */
 

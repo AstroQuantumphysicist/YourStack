@@ -1,5 +1,5 @@
 import { pino } from 'pino';
-import { loadConfig } from '@noderail/config';
+import { loadConfig } from '@yourstack/config';
 
 const config = loadConfig();
 

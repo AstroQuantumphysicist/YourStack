@@ -1,7 +1,7 @@
 /**
  * Canonical status enums shared across API, worker, agent (via generated JSON),
  * web, and CLI. Modeled as const objects so they double as runtime values and
- * union types, and align 1:1 with the Prisma string columns in @noderail/db.
+ * union types, and align 1:1 with the Prisma string columns in @yourstack/db.
  */
 
 export const WorkspaceRole = {

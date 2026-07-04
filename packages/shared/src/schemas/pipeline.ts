@@ -2,11 +2,11 @@ import { z } from 'zod';
 import { AppFramework } from '../enums.js';
 
 /**
- * Schema + parser for the in-repo `noderail.yml` pipeline config.
+ * Schema + parser for the in-repo `yourstack.yml` pipeline config.
  * The worker reads this file at checkout; when absent it falls back to
  * framework auto-detection (see `detectFramework`).
  */
-export const noderailConfigSchema = z.object({
+export const yourstackConfigSchema = z.object({
   name: z.string().min(1),
   on: z
     .object({
@@ -42,21 +42,21 @@ export const noderailConfigSchema = z.object({
       .optional(),
   }),
 });
-export type NoderailConfig = z.infer<typeof noderailConfigSchema>;
+export type YourStackConfig = z.infer<typeof yourstackConfigSchema>;
 
 export interface ParseResult {
   ok: boolean;
-  config?: NoderailConfig;
+  config?: YourStackConfig;
   errors?: string[];
 }
 
 /**
  * Validate an already-parsed YAML/JSON object against the schema.
  * (YAML parsing itself is done by the worker with `yaml`, which has no browser
- * deps; this keeps @noderail/shared dependency-light.)
+ * deps; this keeps @yourstack/shared dependency-light.)
  */
-export function validateNoderailConfig(raw: unknown): ParseResult {
-  const result = noderailConfigSchema.safeParse(raw);
+export function validateYourStackConfig(raw: unknown): ParseResult {
+  const result = yourstackConfigSchema.safeParse(raw);
   if (result.success) return { ok: true, config: result.data };
   return {
     ok: false,

@@ -4,7 +4,7 @@ import {
   NODE_DEGRADED_AFTER_MS,
   NODE_OFFLINE_AFTER_MS,
   SSE_CHANNELS,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 import { publish, type WorkerContext } from '../context.js';
 import { logger } from '../logger.js';
 

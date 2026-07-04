@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { connectRepoSchema, Permission } from '@noderail/shared';
-import { AuditAction } from '@noderail/security';
+import { connectRepoSchema, Permission } from '@yourstack/shared';
+import { AuditAction } from '@yourstack/security';
 import { requirePermission } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';

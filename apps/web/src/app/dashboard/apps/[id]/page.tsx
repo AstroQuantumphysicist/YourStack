@@ -16,7 +16,7 @@ import {
   Settings,
   Square,
 } from 'lucide-react';
-import type { AppDTO } from '@noderail/shared';
+import type { AppDTO } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
 import { api, ApiError } from '@/lib/api';
 import { useSSE } from '@/lib/use-sse';

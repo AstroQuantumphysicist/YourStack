@@ -95,7 +95,7 @@ export default function LandingPage() {
           We turn it into a cloud.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-pretty text-base text-muted-foreground sm:text-lg">
-          NodeRail is the control plane for infrastructure you own. Connect your nodes, push your
+          YourStack is the control plane for infrastructure you own. Connect your nodes, push your
           code, and get deployments, pipelines, secrets and domains — without renting someone
           else&apos;s hardware.
         </p>

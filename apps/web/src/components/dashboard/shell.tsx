@@ -98,7 +98,7 @@ function Onboarding() {
     try {
       const { workspace } = await api.createWorkspace(name.trim());
       addWorkspace(workspace);
-      toast.success('Workspace created', 'Welcome to NodeRail.');
+      toast.success('Workspace created', 'Welcome to YourStack.');
     } catch (err) {
       toast.error('Could not create workspace', err instanceof ApiError ? err.message : undefined);
       setLoading(false);

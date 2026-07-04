@@ -6,7 +6,7 @@ import {
   SSE_CHANNELS,
   deployJobSchema,
   type HealthcheckJob,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 import { publish, type WorkerContext } from '../context.js';
 import { createSignedCommand } from '../lib/command.js';
 import { appendDeploymentLog } from '../lib/logs.js';

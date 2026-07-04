@@ -5,14 +5,14 @@ import {
   nodeLabelSchema,
   Permission,
   JOIN_TOKEN_TTL_MS,
-} from '@noderail/shared';
-import { generateJoinToken, AuditAction } from '@noderail/security';
+} from '@yourstack/shared';
+import { generateJoinToken, AuditAction } from '@yourstack/security';
 import { requirePermission } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
 import { toNodeDTO } from '../lib/dto.js';
 
-async function nodeWorkspace(prisma: import('@noderail/db').PrismaClient, nodeId: string) {
+async function nodeWorkspace(prisma: import('@yourstack/db').PrismaClient, nodeId: string) {
   const node = await prisma.node.findFirst({ where: { id: nodeId, deletedAt: null } });
   if (!node) throw Errors.notFound('Node not found');
   return node;
@@ -66,12 +66,12 @@ export default async function nodeRoutes(app: FastifyInstance) {
       action: AuditAction.NODE_JOIN_TOKEN_CREATE,
     });
 
-    // The token is shown exactly once; agent uses it with `noderail node join`.
+    // The token is shown exactly once; agent uses it with `yourstack node join`.
     return {
       joinToken: token.plaintext,
       expiresAt: expiresAt.toISOString(),
       apiUrl: config.PUBLIC_API_URL,
-      installCommand: `curl -fsSL ${config.PUBLIC_WEB_URL}/install.sh | NODERAIL_API_URL="${config.PUBLIC_API_URL}" NODERAIL_JOIN_TOKEN="${token.plaintext}" sh`,
+      installCommand: `curl -fsSL ${config.PUBLIC_WEB_URL}/install.sh | YOURSTACK_API_URL="${config.PUBLIC_API_URL}" YOURSTACK_JOIN_TOKEN="${token.plaintext}" sh`,
     };
   });
 

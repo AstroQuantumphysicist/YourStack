@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # =============================================================================
-# NodeRail web (Next.js dashboard) — multi-stage build of the standalone output.
+# YourStack web (Next.js dashboard) — multi-stage build of the standalone output.
 #
 # Build context MUST be the repository root (pnpm workspace lockfile + manifests).
 #   - docker compose sets `context: ..` + this dockerfile path.
@@ -43,7 +43,7 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:4000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY . .
-RUN pnpm --filter @noderail/web build
+RUN pnpm --filter @yourstack/web build
 
 # --- runtime: minimal standalone server ---------------------------------------
 FROM node:${NODE_VERSION} AS runtime

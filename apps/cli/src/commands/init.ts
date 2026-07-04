@@ -3,11 +3,11 @@ import { access } from 'node:fs/promises';
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
-import type { ProjectDTO, WorkspaceDTO } from '@noderail/shared';
+import type { ProjectDTO, WorkspaceDTO } from '@yourstack/shared';
 import { requireClient, type GlobalFlags } from '../lib/context.js';
 import { CliError } from '../lib/errors.js';
 import { info, success } from '../lib/output.js';
-import { buildNoderailConfig, saveProjectLink, writeNoderailYaml } from '../lib/project.js';
+import { buildYourStackConfig, saveProjectLink, writeYourStackYaml } from '../lib/project.js';
 
 function ensure<T>(value: T | symbol): T {
   if (p.isCancel(value)) throw new CliError('Cancelled.', 130);
@@ -17,13 +17,13 @@ function ensure<T>(value: T | symbol): T {
 export function registerInit(program: Command): void {
   program
     .command('init')
-    .description('Link the current directory to a NodeRail project and scaffold noderail.yml')
+    .description('Link the current directory to a YourStack project and scaffold yourstack.yml')
     .option('--name <name>', 'App/config name (defaults to the directory name)')
     .action(async (opts: { name?: string }, cmd: Command) => {
       const flags = cmd.optsWithGlobals() as GlobalFlags;
       const { client } = await requireClient(flags);
 
-      p.intro(pc.bgCyan(pc.black(' noderail init ')));
+      p.intro(pc.bgCyan(pc.black(' yourstack init ')));
 
       // --- Workspace ---
       const me = await client.me();
@@ -104,8 +104,8 @@ export function registerInit(program: Command): void {
         }
       }
 
-      // --- Scaffold noderail.yml ---
-      const config = buildNoderailConfig({
+      // --- Scaffold yourstack.yml ---
+      const config = buildYourStackConfig({
         name: appName,
         branch: branch || 'main',
         install: installCommand || undefined,
@@ -116,15 +116,15 @@ export function registerInit(program: Command): void {
 
       let wroteYaml = true;
       try {
-        await access('noderail.yml');
+        await access('yourstack.yml');
         const overwrite = ensure(
-          await p.confirm({ message: 'noderail.yml already exists. Overwrite?', initialValue: false }),
+          await p.confirm({ message: 'yourstack.yml already exists. Overwrite?', initialValue: false }),
         );
         wroteYaml = overwrite;
       } catch {
         // File does not exist — safe to write.
       }
-      if (wroteYaml) await writeNoderailYaml(config);
+      if (wroteYaml) await writeYourStackYaml(config);
 
       // --- Write the local link ---
       const linkPath = await saveProjectLink({
@@ -137,10 +137,10 @@ export function registerInit(program: Command): void {
       });
 
       p.outro(pc.green('Project linked.'));
-      if (wroteYaml) success(`Wrote ${pc.cyan('noderail.yml')}`);
-      success(`Wrote ${pc.cyan('.noderail/project.json')} ${pc.dim(`(${linkPath})`)}`);
+      if (wroteYaml) success(`Wrote ${pc.cyan('yourstack.yml')}`);
+      success(`Wrote ${pc.cyan('.yourstack/project.json')} ${pc.dim(`(${linkPath})`)}`);
       info('');
-      info(`Next: ${pc.cyan('noderail deploy')} to ship it.`);
+      info(`Next: ${pc.cyan('yourstack deploy')} to ship it.`);
     });
 }
 

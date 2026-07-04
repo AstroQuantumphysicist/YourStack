@@ -7,6 +7,6 @@ export default defineConfig({
   platform: 'node',
   clean: true,
   sourcemap: true,
-  noExternal: [/@noderail\//],
+  noExternal: [/@yourstack\//],
   external: ['@prisma/client', '.prisma/client'],
 });

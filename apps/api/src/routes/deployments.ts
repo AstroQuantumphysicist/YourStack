@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import { Permission } from '@noderail/shared';
+import { Permission } from '@yourstack/shared';
 import { requirePermission } from '../lib/rbac.js';
 import { Errors } from '../lib/errors.js';
 import { toDeploymentDTO, toPipelineRunDTO } from '../lib/dto.js';
 
-async function deploymentWorkspace(prisma: import('@noderail/db').PrismaClient, deploymentId: string) {
+async function deploymentWorkspace(prisma: import('@yourstack/db').PrismaClient, deploymentId: string) {
   const deployment = await prisma.deployment.findUnique({
     where: { id: deploymentId },
     include: { app: { include: { project: true } } },

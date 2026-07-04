@@ -1,5 +1,5 @@
-import type { PrismaClient } from '@noderail/db';
-import type { Encryptor } from '@noderail/security';
+import type { PrismaClient } from '@yourstack/db';
+import type { Encryptor } from '@yourstack/security';
 
 /**
  * Resolve the effective environment for an app by layering secrets:

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalJson } from '../canonical.js';
 import { parseMemoryToMb } from '../schemas/common.js';
-import { detectFramework, validateNoderailConfig } from '../schemas/pipeline.js';
+import { detectFramework, validateYourStackConfig } from '../schemas/pipeline.js';
 import { Permission, roleAtLeast, roleHasPermission } from '../rbac.js';
 import { WorkspaceRole } from '../enums.js';
 import { commandPayloadSchema } from '../schemas/commands.js';
@@ -44,9 +44,9 @@ describe('detectFramework', () => {
   });
 });
 
-describe('validateNoderailConfig', () => {
+describe('validateYourStackConfig', () => {
   it('accepts a valid config', () => {
-    const res = validateNoderailConfig({
+    const res = validateYourStackConfig({
       name: 'web',
       on: { push: { branches: ['main'] }, pull_request: true },
       build: { install: 'pnpm i', command: 'pnpm build' },
@@ -56,7 +56,7 @@ describe('validateNoderailConfig', () => {
     expect(res.config?.name).toBe('web');
   });
   it('rejects missing deploy', () => {
-    expect(validateNoderailConfig({ name: 'x' }).ok).toBe(false);
+    expect(validateYourStackConfig({ name: 'x' }).ok).toBe(false);
   });
 });
 
@@ -82,8 +82,8 @@ describe('commandPayloadSchema', () => {
       spec: {
         appId: 'app_1',
         deploymentId: 'dep_1',
-        containerName: 'noderail-app_1',
-        imageTag: 'noderail/app_1:1',
+        containerName: 'yourstack-app_1',
+        imageTag: 'yourstack/app_1:1',
         source: { kind: 'image', image: 'nginx:latest' },
         resources: { cpu: 0.5, memoryMb: 512 },
       },

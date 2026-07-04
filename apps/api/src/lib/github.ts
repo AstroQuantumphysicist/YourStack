@@ -1,5 +1,5 @@
 import { request } from 'undici';
-import type { AppConfig } from '@noderail/config';
+import type { AppConfig } from '@yourstack/config';
 
 export interface GithubUser {
   id: number;
@@ -70,7 +70,7 @@ export class GithubClient {
       headers: {
         accept: 'application/vnd.github+json',
         authorization: `Bearer ${token}`,
-        'user-agent': 'NodeRail',
+        'user-agent': 'YourStack',
         'x-github-api-version': '2022-11-28',
         ...(init?.headers as Record<string, string>),
       },
@@ -119,7 +119,7 @@ export class GithubClient {
         state,
         target_url: opts.targetUrl,
         description: opts.description?.slice(0, 140),
-        context: opts.context ?? 'noderail/deploy',
+        context: opts.context ?? 'yourstack/deploy',
       }),
     });
   }

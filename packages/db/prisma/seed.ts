@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { generateApiToken, generateCommandKey, hashPassword } from '@noderail/security';
-import { DEFAULT_PLAN } from '@noderail/shared';
+import { generateApiToken, generateCommandKey, hashPassword } from '@yourstack/security';
+import { DEFAULT_PLAN } from '@yourstack/shared';
 
 const prisma = new PrismaClient();
 
@@ -38,7 +38,7 @@ async function main() {
   });
 
   console.log('→ Seeding demo user + workspace…');
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@noderail.local';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@yourstack.local';
   const user = await prisma.user.upsert({
     where: { email: adminEmail },
     update: { isPlatformAdmin: true },
@@ -46,7 +46,7 @@ async function main() {
       email: adminEmail,
       name: 'Demo Admin',
       isPlatformAdmin: true,
-      passwordHash: await hashPassword('noderail-dev'),
+      passwordHash: await hashPassword('yourstack-dev'),
     },
   });
 
@@ -83,7 +83,7 @@ async function main() {
       name: 'web',
       slug: 'web',
       framework: 'nextjs',
-      repoUrl: 'https://github.com/noderail/example-next',
+      repoUrl: 'https://github.com/yourstack/example-next',
       branch: 'main',
       installCommand: 'pnpm install --frozen-lockfile',
       buildCommand: 'pnpm build',
@@ -120,7 +120,7 @@ async function main() {
 
   const token = generateApiToken();
   console.log('\n✔ Seed complete.');
-  console.log(`  Admin user:   ${adminEmail} (password: noderail-dev)`);
+  console.log(`  Admin user:   ${adminEmail} (password: yourstack-dev)`);
   console.log(`  Workspace:    demo`);
   console.log(`  Sample API token (not stored): ${token.plaintext}`);
 }

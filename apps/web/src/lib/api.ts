@@ -13,7 +13,7 @@ import type {
   UserDTO,
   WorkspaceDTO,
   WorkspaceStatsDTO,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 
 /** Resolved base URL of the control-plane API. All routes live under `/v1`. */
 export const API_BASE =
@@ -86,7 +86,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     throw new ApiError(
       0,
       'network_error',
-      'Could not reach the NodeRail API. Is it running?',
+      'Could not reach the YourStack API. Is it running?',
     );
   }
 

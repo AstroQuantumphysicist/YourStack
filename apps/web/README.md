@@ -1,6 +1,6 @@
-# @noderail/web
+# @yourstack/web
 
-The NodeRail web dashboard — a Next.js (App Router) control-plane UI for the
+The YourStack web dashboard — a Next.js (App Router) control-plane UI for the
 "bring your own server" cloud platform.
 
 > Bring your own server. We turn it into a cloud.
@@ -8,7 +8,7 @@ The NodeRail web dashboard — a Next.js (App Router) control-plane UI for the
 ## Stack
 
 - **Next.js 14** (App Router, standalone output for Docker)
-- **TypeScript** (strict), consuming `@noderail/shared` as source
+- **TypeScript** (strict), consuming `@yourstack/shared` as source
 - **Tailwind CSS v3** (class-based dark mode, dark-first) with hand-built UI kit
 - **SWR** for client-side data fetching
 - **lucide-react** icons, **class-variance-authority** + **tailwind-merge** for components
@@ -22,8 +22,8 @@ pnpm install
 cp apps/web/.env.example apps/web/.env.local   # adjust NEXT_PUBLIC_API_URL if needed
 
 # run the API (port 4000) and the web app (port 3000)
-pnpm --filter @noderail/api dev
-pnpm --filter @noderail/web dev
+pnpm --filter @yourstack/api dev
+pnpm --filter @yourstack/web dev
 ```
 
 Open http://localhost:3000. Use **dev sign-in** (email) locally, or **Continue
@@ -55,8 +55,8 @@ uses `credentials: 'include'`.
 - **Local:** web (`:3000`) → API (`:4000`) is same-site, so the API's `Lax`
   session cookie is sent automatically.
 - **Production:** the API and web must share a registrable domain
-  (e.g. `app.noderail.com` + `api.noderail.com`) and the API must set
-  `SESSION_COOKIE_DOMAIN=.noderail.com` so the cookie is shared. Otherwise the
+  (e.g. `app.yourstack.com` + `api.yourstack.com`) and the API must set
+  `SESSION_COOKIE_DOMAIN=.yourstack.com` so the cookie is shared. Otherwise the
   browser will not attach the session cookie to cross-site API calls.
 
 A `401` from the API automatically redirects the browser to `/login`.
@@ -80,7 +80,7 @@ Live logs and status use SSE channels exposed by the API:
 ## `public/install.sh`
 
 A small POSIX bootstrap the API references as `${PUBLIC_WEB_URL}/install.sh`.
-It validates `NODERAIL_API_URL` + `NODERAIL_JOIN_TOKEN`, downloads the agent
+It validates `YOURSTACK_API_URL` + `YOURSTACK_JOIN_TOKEN`, downloads the agent
 installer, and runs it to register the node. The "Join a node" modal renders the
 exact one-line command.
 

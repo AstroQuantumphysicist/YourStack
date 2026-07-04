@@ -6,8 +6,8 @@ import {
   updateWorkspaceSchema,
   Permission,
   type WorkspaceRole,
-} from '@noderail/shared';
-import { AuditAction } from '@noderail/security';
+} from '@yourstack/shared';
+import { AuditAction } from '@yourstack/security';
 import { requireUser } from '../lib/auth.js';
 import { requirePermission, resolveMembership } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
@@ -188,7 +188,7 @@ export default async function workspaceRoutes(app: FastifyInstance) {
   });
 }
 
-async function uniqueSlug(prisma: import('@noderail/db').PrismaClient, base: string): Promise<string> {
+async function uniqueSlug(prisma: import('@yourstack/db').PrismaClient, base: string): Promise<string> {
   let slug = base;
   let n = 1;
   while (await prisma.workspace.findUnique({ where: { slug } })) {

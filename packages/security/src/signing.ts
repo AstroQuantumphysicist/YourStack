@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { canonicalJson } from '@noderail/shared';
+import { canonicalJson } from '@yourstack/shared';
 
 /**
  * HMAC-SHA256 signing of node commands. The control plane signs the canonical

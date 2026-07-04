@@ -1,6 +1,6 @@
-# NodeRail Production Checklist
+# YourStack Production Checklist
 
-Work through this before taking a NodeRail control plane live. See
+Work through this before taking a YourStack control plane live. See
 [DEPLOYMENT.md](./DEPLOYMENT.md) for the how, and [SECURITY.md](./SECURITY.md) for
 the why.
 
@@ -50,13 +50,13 @@ the why.
 - [ ] api `healthcheckPath = /health` configured; `/ready` returns `200`
       (Postgres + Redis reachable).
 - [ ] Restart policies configured (`ON_FAILURE`, retries) on api + worker.
-- [ ] Worker running and draining queues (`noderail_commands_queued` not growing
+- [ ] Worker running and draining queues (`yourstack_commands_queued` not growing
       unbounded).
 
 ## Monitoring & observability
 
 - [ ] `/metrics` scraped by Prometheus (or equivalent); alerts on
-      `noderail_nodes_online` dropping and `noderail_commands_queued` climbing.
+      `yourstack_nodes_online` dropping and `yourstack_commands_queued` climbing.
 - [ ] `LOG_LEVEL` appropriate for prod (`info`); log shipping configured.
 - [ ] Alerting on failed deployments / node offline transitions.
 

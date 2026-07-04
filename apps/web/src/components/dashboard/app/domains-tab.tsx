@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { Globe, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import type { DomainDTO } from '@noderail/shared';
+import type { DomainDTO } from '@yourstack/shared';
 import { api, ApiError, type DnsInstructions } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { Card, CardContent } from '@/components/ui/card';

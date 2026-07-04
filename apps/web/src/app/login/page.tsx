@@ -53,7 +53,7 @@ function LoginInner() {
       <main className="flex flex-1 items-center justify-center px-6 py-10">
         <div className="w-full max-w-md">
           <div className="glass rounded-2xl border border-border p-7 shadow-card sm:p-8">
-            <h1 className="text-xl font-semibold tracking-tight">Sign in to NodeRail</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Sign in to YourStack</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Access your workspaces, nodes, and deployments.
             </p>

@@ -1,15 +1,15 @@
 <div align="center">
 
-# NodeRail
+# YourStack
 
 ### Bring your own server. We turn it into a cloud.
 
 A production "bring your own compute" (BYOC) platform — the Railway/Vercel
 developer experience, running on **servers you own**. Connect a node, connect
-GitHub, `git push`, and NodeRail builds, deploys, health-checks, and routes
+GitHub, `git push`, and YourStack builds, deploys, health-checks, and routes
 traffic to your app on your own hardware.
 
-[![CI](https://github.com/noderail/noderail/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/yourstack/yourstack/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
 [![pnpm](https://img.shields.io/badge/pnpm-9-orange.svg)](https://pnpm.io)
@@ -21,7 +21,7 @@ traffic to your app on your own hardware.
 
 ## Table of contents
 
-- [What is NodeRail?](#what-is-noderail)
+- [What is YourStack?](#what-is-yourstack)
 - [Architecture overview](#architecture-overview)
 - [Monorepo layout](#monorepo-layout)
 - [Local development](#local-development)
@@ -34,11 +34,11 @@ traffic to your app on your own hardware.
 
 ---
 
-## What is NodeRail?
+## What is YourStack?
 
-Most PaaS products rent you _their_ compute. NodeRail flips that: you run a small
+Most PaaS products rent you _their_ compute. YourStack flips that: you run a small
 signed **agent** on any Linux server you control (a VPS, a homelab box, a bare
-metal rack), and the NodeRail **control plane** turns it into a first-class
+metal rack), and the YourStack **control plane** turns it into a first-class
 deploy target with the workflow you expect from a modern cloud:
 
 - **Git-driven deploys** — connect a GitHub repo, push to a branch, get a build.
@@ -110,7 +110,7 @@ For the deep dive, see **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)**.
 ## Monorepo layout
 
 ```
-noderail/
+yourstack/
 ├── apps/
 │   ├── api/          Fastify control-plane API (ESM, bundled with tsup)
 │   │   ├── Dockerfile          canonical multi-stage image
@@ -119,7 +119,7 @@ noderail/
 │   │   ├── Dockerfile
 │   │   └── railway.toml
 │   ├── web/          Next.js dashboard (standalone output)
-│   ├── cli/          `noderail` CLI
+│   ├── cli/          `yourstack` CLI
 │   └── agent/        Rust node agent (runs on user servers)
 ├── packages/
 │   ├── config/       Typed env loading (zod) — the authoritative env list
@@ -193,10 +193,10 @@ Or run them individually:
 
 | App | Command | Port |
 | --- | --- | --- |
-| API | `pnpm --filter @noderail/api dev` | 4000 |
-| Worker | `pnpm --filter @noderail/worker dev` | (no HTTP) |
-| Web | `pnpm --filter @noderail/web dev` | 3000 |
-| CLI | `pnpm --filter @noderail/cli build && node apps/cli/dist/index.js` | — |
+| API | `pnpm --filter @yourstack/api dev` | 4000 |
+| Worker | `pnpm --filter @yourstack/worker dev` | (no HTTP) |
+| Web | `pnpm --filter @yourstack/web dev` | 3000 |
+| CLI | `pnpm --filter @yourstack/cli build && node apps/cli/dist/index.js` | — |
 
 Health checks: `curl localhost:4000/health` (liveness) and
 `curl localhost:4000/ready` (checks Postgres + Redis). API docs are served at
@@ -209,7 +209,7 @@ Health checks: `curl localhost:4000/health` (liveness) and
 docker compose -f infra/docker-compose.yml --profile proxy up -d
 
 # Run a dev node agent joined to the compose network (needs a join token)
-NODERAIL_JOIN_TOKEN=nrj_... docker compose -f infra/docker-compose.yml --profile nodes up -d agent
+YOURSTACK_JOIN_TOKEN=ysj_... docker compose -f infra/docker-compose.yml --profile nodes up -d agent
 ```
 
 ### Useful root scripts
@@ -246,7 +246,7 @@ readable error if a required var is missing or malformed.
 | `GITHUB_WEBHOOK_SECRET` | no | — | HMAC secret for push/PR webhooks |
 | `PUBLIC_API_URL` | no | `http://localhost:4000` | Public URL of the API (OAuth redirects, links) |
 | `PUBLIC_WEB_URL` | no | `http://localhost:3000` | Public URL of the dashboard; always CORS-allowed |
-| `BASE_PREVIEW_DOMAIN` | no | `preview.noderail.local` | Base for generated app/preview domains |
+| `BASE_PREVIEW_DOMAIN` | no | `preview.yourstack.local` | Base for generated app/preview domains |
 | `ADMIN_EMAILS` | no | — | CSV of platform-admin emails |
 | `CORS_ORIGINS` | no | — | CSV of extra allowed origins |
 | `RATE_LIMIT_MAX` | no | `300` | Requests per window (per user/IP) |
@@ -266,7 +266,7 @@ API URL (`http://localhost:4000` locally).
 
 ## Deploying to Railway
 
-NodeRail's control plane maps cleanly onto Railway. Create **one project** with
+YourStack's control plane maps cleanly onto Railway. Create **one project** with
 five services: **Postgres**, **Redis**, **api**, **worker**, and **web**.
 
 ### 1. Add the datastores
@@ -334,7 +334,7 @@ The **api** service runs migrations as a **pre-deploy step** before the new
 version receives traffic:
 
 ```
-preDeployCommand = "pnpm --filter @noderail/db migrate:deploy"
+preDeployCommand = "pnpm --filter @yourstack/db migrate:deploy"
 ```
 
 This is already set in `apps/api/railway.toml`. It runs inside the freshly built
@@ -378,13 +378,13 @@ Once the control plane is running:
    includes a one-line installer:
    ```bash
    curl -fsSL https://app.<your-domain>/install.sh \
-     | NODERAIL_API_URL=https://api.<your-domain> NODERAIL_JOIN_TOKEN=nrj_... sh
+     | YOURSTACK_API_URL=https://api.<your-domain> YOURSTACK_JOIN_TOKEN=ysj_... sh
    ```
    The agent registers, receives a hashed agent token + an HMAC command key, and
    starts sending heartbeats. Join tokens expire in **15 minutes** and are
    single-use.
 3. **Connect GitHub.** Authorize the GitHub OAuth app, then connect a repository.
-   NodeRail installs a webhook (if `GITHUB_WEBHOOK_SECRET` is set) so pushes and
+   YourStack installs a webhook (if `GITHUB_WEBHOOK_SECRET` is set) so pushes and
    PRs trigger deploys.
 4. **Create an app and deploy.** Point an app at a repo + branch, pick a node, and
    trigger a deploy (`POST /v1/apps/:id/deploy`) or just `git push`. Watch the
@@ -440,4 +440,4 @@ Once the control plane is running:
 
 ## License
 
-[Apache License 2.0](./LICENSE) © 2026 NodeRail contributors.
+[Apache License 2.0](./LICENSE) © 2026 YourStack contributors.

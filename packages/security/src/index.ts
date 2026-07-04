@@ -11,4 +11,4 @@ export {
   roleHasPermission,
   permissionsForRole,
   roleAtLeast,
-} from '@noderail/shared';
+} from '@yourstack/shared';

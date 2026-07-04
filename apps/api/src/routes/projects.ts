@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { createProjectSchema, updateProjectSchema, Permission } from '@noderail/shared';
+import { createProjectSchema, updateProjectSchema, Permission } from '@yourstack/shared';
 import { requirePermission } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';

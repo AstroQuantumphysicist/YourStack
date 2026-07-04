@@ -1,4 +1,4 @@
-import { REDACTED } from '@noderail/shared';
+import { REDACTED } from '@yourstack/shared';
 
 /**
  * Best-effort secret redaction for log lines. Given a set of secret values,
@@ -6,7 +6,7 @@ import { REDACTED } from '@noderail/shared';
  * token-shaped strings heuristically. This is defense-in-depth, not a guarantee.
  */
 const HEURISTIC_PATTERNS: RegExp[] = [
-  /\bnr[aj]?_[A-Za-z0-9_-]{16,}\b/g, // NodeRail tokens
+  /\bys[aj]?_[A-Za-z0-9_-]{16,}\b/g, // YourStack tokens (ys_ api, ysj_ join, ysa_ agent)
   /\bghp_[A-Za-z0-9]{36}\b/g, // GitHub PAT
   /\bgithub_pat_[A-Za-z0-9_]{22,}\b/g,
   /\bAKIA[0-9A-Z]{16}\b/g, // AWS access key id

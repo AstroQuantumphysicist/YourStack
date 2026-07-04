@@ -32,7 +32,7 @@ use crate::telemetry::Collector;
 pub async fn run(config: Config) -> Result<()> {
     if !config.is_registered() {
         anyhow::bail!(
-            "agent is not registered; run `noderail-agent register --api-url <url> --join-token <token> --name <name>` first"
+            "agent is not registered; run `yourstack-agent register --api-url <url> --join-token <token> --name <name>` first"
         );
     }
 

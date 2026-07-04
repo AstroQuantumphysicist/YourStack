@@ -31,7 +31,7 @@ export async function requireClient(
     throw new CliError(
       'You are not logged in.',
       1,
-      `Run ${pc.cyan('noderail login')} (or set ${pc.cyan('NODERAIL_TOKEN')}).`,
+      `Run ${pc.cyan('yourstack login')} (or set ${pc.cyan('YOURSTACK_TOKEN')}).`,
     );
   }
   return { client, config };
@@ -39,7 +39,7 @@ export async function requireClient(
 
 /**
  * Resolve the target app id: an explicit `--app` flag wins, otherwise the app
- * recorded in `.noderail/project.json`. Throws with guidance when neither is
+ * recorded in `.yourstack/project.json`. Throws with guidance when neither is
  * available.
  */
 export async function resolveAppId(explicit: string | undefined): Promise<string> {
@@ -49,7 +49,7 @@ export async function resolveAppId(explicit: string | undefined): Promise<string
   throw new CliError(
     'No app specified and none linked in this directory.',
     1,
-    `Pass ${pc.cyan('--app <id>')} or run ${pc.cyan('noderail init')} to link this directory.`,
+    `Pass ${pc.cyan('--app <id>')} or run ${pc.cyan('yourstack init')} to link this directory.`,
   );
 }
 
@@ -61,7 +61,7 @@ export async function resolveProjectId(explicit: string | undefined): Promise<st
   throw new CliError(
     'No project specified and none linked in this directory.',
     1,
-    `Pass ${pc.cyan('--project <id>')} or run ${pc.cyan('noderail init')}.`,
+    `Pass ${pc.cyan('--project <id>')} or run ${pc.cyan('yourstack init')}.`,
   );
 }
 

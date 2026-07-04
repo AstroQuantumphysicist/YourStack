@@ -1,6 +1,6 @@
 import type { FastifyRequest } from 'fastify';
-import { type Permission, roleHasPermission, type WorkspaceRole } from '@noderail/shared';
-import type { PrismaClient } from '@noderail/db';
+import { type Permission, roleHasPermission, type WorkspaceRole } from '@yourstack/shared';
+import type { PrismaClient } from '@yourstack/db';
 import { Errors } from './errors.js';
 import { requireUser } from './auth.js';
 

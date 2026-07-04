@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # =============================================================================
-# NodeRail worker (BullMQ background processor) — multi-stage, pnpm + turbo aware.
+# YourStack worker (BullMQ background processor) — multi-stage, pnpm + turbo aware.
 #
 # Build context MUST be the repository root (pnpm workspace lockfile + manifests).
 #   - docker compose sets `context: ..` + this dockerfile path.
@@ -36,8 +36,8 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
-RUN pnpm --filter @noderail/db generate \
- && pnpm --filter @noderail/worker build
+RUN pnpm --filter @yourstack/db generate \
+ && pnpm --filter @yourstack/worker build
 
 FROM base AS runtime
 ENV NODE_ENV=production

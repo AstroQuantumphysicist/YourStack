@@ -1,8 +1,8 @@
 {
-  "name": "noderail",
+  "name": "yourstack",
   "version": "0.1.0",
   "private": true,
-  "description": "NodeRail — Bring your own server. We turn it into a cloud.",
+  "description": "YourStack — Bring your own server. We turn it into a cloud.",
   "license": "Apache-2.0",
   "packageManager": "pnpm@9.0.0",
   "engines": {
@@ -22,11 +22,11 @@
     "test": "turbo run test",
     "clean": "turbo run clean && rimraf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "db:generate": "pnpm --filter @noderail/db generate",
-    "db:migrate": "pnpm --filter @noderail/db migrate:deploy",
-    "db:migrate:dev": "pnpm --filter @noderail/db migrate:dev",
-    "db:seed": "pnpm --filter @noderail/db seed",
-    "db:studio": "pnpm --filter @noderail/db studio",
+    "db:generate": "pnpm --filter @yourstack/db generate",
+    "db:migrate": "pnpm --filter @yourstack/db migrate:deploy",
+    "db:migrate:dev": "pnpm --filter @yourstack/db migrate:dev",
+    "db:seed": "pnpm --filter @yourstack/db seed",
+    "db:studio": "pnpm --filter @yourstack/db studio",
     "docker:up": "docker compose -f infra/docker-compose.yml up -d",
     "docker:down": "docker compose -f infra/docker-compose.yml down",
     "docker:logs": "docker compose -f infra/docker-compose.yml logs -f"

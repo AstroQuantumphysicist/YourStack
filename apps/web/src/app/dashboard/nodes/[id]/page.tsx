@@ -15,7 +15,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import type { NodeDTO } from '@noderail/shared';
+import type { NodeDTO } from '@yourstack/shared';
 import { api, ApiError, type HeartbeatPoint, type NodeAppSummary } from '@/lib/api';
 import { useSSE } from '@/lib/use-sse';
 import { useToast } from '@/components/ui/toast';

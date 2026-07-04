@@ -30,7 +30,7 @@ export default fp(async function authPlugin(app) {
     }
 
     const bearer = bearerToken(req);
-    if (bearer?.startsWith('nr_')) {
+    if (bearer?.startsWith('ys_')) {
       const user = await resolveApiTokenUser(app.ctx.prisma, bearer);
       if (user) {
         req.user = {

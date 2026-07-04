@@ -15,7 +15,7 @@ import type {
   PipelineRun,
   PipelineStage,
   Plan,
-} from '@noderail/db';
+} from '@yourstack/db';
 import type {
   AppDTO,
   DeploymentDTO,
@@ -35,7 +35,7 @@ import type {
   AppFramework,
   DeploymentStrategy,
   SecretScope,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 import { iso } from './util.js';
 
 export function toUserDTO(u: User): UserDTO {

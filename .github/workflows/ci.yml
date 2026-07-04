@@ -13,11 +13,11 @@ concurrency:
 env:
   # Deterministic test/build config. These are throwaway CI values, never secrets.
   NODE_ENV: test
-  DATABASE_URL: postgresql://noderail:noderail@localhost:5432/noderail?schema=public
+  DATABASE_URL: postgresql://yourstack:yourstack@localhost:5432/yourstack?schema=public
   REDIS_URL: redis://localhost:6379
   SESSION_SECRET: ci-session-secret-least-16-chars
   SECRETS_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-  ADMIN_EMAILS: admin@noderail.local
+  ADMIN_EMAILS: admin@yourstack.local
   PUBLIC_API_URL: http://localhost:4000
   PUBLIC_WEB_URL: http://localhost:3000
 
@@ -33,13 +33,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: noderail
-          POSTGRES_PASSWORD: noderail
-          POSTGRES_DB: noderail
+          POSTGRES_USER: yourstack
+          POSTGRES_PASSWORD: yourstack
+          POSTGRES_DB: yourstack
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U noderail -d noderail"
+          --health-cmd "pg_isready -U yourstack -d yourstack"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -70,10 +70,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: pnpm --filter @noderail/db generate
+        run: pnpm --filter @yourstack/db generate
 
       - name: Apply migrations (validates schema against Postgres)
-        run: pnpm --filter @noderail/db migrate:deploy
+        run: pnpm --filter @yourstack/db migrate:deploy
 
       - name: Typecheck
         run: pnpm -r typecheck
@@ -97,13 +97,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: noderail
-          POSTGRES_PASSWORD: noderail
-          POSTGRES_DB: noderail
+          POSTGRES_USER: yourstack
+          POSTGRES_PASSWORD: yourstack
+          POSTGRES_DB: yourstack
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U noderail -d noderail"
+          --health-cmd "pg_isready -U yourstack -d yourstack"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -127,7 +127,7 @@ jobs:
           --shadow-database-url "$DATABASE_URL"
           --exit-code
         env:
-          DATABASE_URL: postgresql://noderail:noderail@localhost:5432/noderail?schema=public
+          DATABASE_URL: postgresql://yourstack:yourstack@localhost:5432/yourstack?schema=public
 
   # ---------------------------------------------------------------------------
   # Rust node agent: format check, build, test.

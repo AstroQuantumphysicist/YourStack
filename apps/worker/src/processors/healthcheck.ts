@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq';
-import { healthcheckJobSchema, TERMINAL_DEPLOYMENT_STATUSES, type DeploymentStatus } from '@noderail/shared';
+import { healthcheckJobSchema, TERMINAL_DEPLOYMENT_STATUSES, type DeploymentStatus } from '@yourstack/shared';
 import type { WorkerContext } from '../context.js';
 import { appendDeploymentLog } from '../lib/logs.js';
 

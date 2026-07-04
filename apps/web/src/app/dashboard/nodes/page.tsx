@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { Cpu, MemoryStick, Plus, Server } from 'lucide-react';
-import type { NodeDTO } from '@noderail/shared';
+import type { NodeDTO } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
 import { useSSE } from '@/lib/use-sse';
 import { PageHeader } from '@/components/page-header';

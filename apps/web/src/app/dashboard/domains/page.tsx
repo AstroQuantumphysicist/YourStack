@@ -3,7 +3,7 @@
 import useSWR from 'swr';
 import Link from 'next/link';
 import { Globe, RefreshCw } from 'lucide-react';
-import type { DomainDTO } from '@noderail/shared';
+import type { DomainDTO } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
 import { api, ApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';

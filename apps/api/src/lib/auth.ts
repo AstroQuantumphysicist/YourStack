@@ -1,9 +1,9 @@
 import type { FastifyRequest } from 'fastify';
-import { hashToken, generateApiToken, verifyToken } from '@noderail/security';
-import type { PrismaClient, User } from '@noderail/db';
+import { hashToken, generateApiToken, verifyToken } from '@yourstack/security';
+import type { PrismaClient, User } from '@yourstack/db';
 import { Errors } from './errors.js';
 
-export const SESSION_COOKIE = 'nr_session';
+export const SESSION_COOKIE = 'ys_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export interface SessionUser {
@@ -53,7 +53,7 @@ export async function resolveApiTokenUser(
   prisma: PrismaClient,
   token: string | undefined,
 ): Promise<User | null> {
-  if (!token || !token.startsWith('nr_')) return null;
+  if (!token || !token.startsWith('ys_')) return null;
   const record = await prisma.apiToken.findUnique({
     where: { tokenHash: hashToken(token) },
     include: { user: true },

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { Permission } from '@noderail/shared';
+import { Permission } from '@yourstack/shared';
 import { requirePermission } from '../lib/rbac.js';
 import { toAuditDTO } from '../lib/dto.js';
 

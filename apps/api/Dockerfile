@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # =============================================================================
-# NodeRail API (Fastify control-plane) — multi-stage, pnpm + turbo aware.
+# YourStack API (Fastify control-plane) — multi-stage, pnpm + turbo aware.
 #
 # IMPORTANT: the build context MUST be the repository root. A pnpm workspace
 # needs the root lockfile and every package manifest to install reproducibly.
@@ -42,8 +42,8 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 # --- build: copy sources, generate Prisma client, bundle the API with tsup -----
 FROM deps AS build
 COPY . .
-RUN pnpm --filter @noderail/db generate \
- && pnpm --filter @noderail/api build
+RUN pnpm --filter @yourstack/db generate \
+ && pnpm --filter @yourstack/api build
 
 # --- runtime -------------------------------------------------------------------
 FROM base AS runtime

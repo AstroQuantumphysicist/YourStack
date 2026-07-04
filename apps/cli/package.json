@@ -1,12 +1,12 @@
 {
-  "name": "@noderail/cli",
+  "name": "@yourstack/cli",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "noderail — the NodeRail developer CLI.",
+  "description": "yourstack — the YourStack developer CLI.",
   "main": "dist/index.js",
   "bin": {
-    "noderail": "./dist/index.js"
+    "yourstack": "./dist/index.js"
   },
   "files": [
     "dist"
@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^0.7.0",
-    "@noderail/shared": "workspace:*",
+    "@yourstack/shared": "workspace:*",
     "commander": "^12.1.0",
     "picocolors": "^1.1.0",
     "yaml": "^2.5.1",

@@ -10,8 +10,8 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
-import type { ApiTokenDTO, AuditLogDTO, MemberDTO, WorkspaceRole } from '@noderail/shared';
-import { WORKSPACE_ROLES } from '@noderail/shared';
+import type { ApiTokenDTO, AuditLogDTO, MemberDTO, WorkspaceRole } from '@yourstack/shared';
+import { WORKSPACE_ROLES } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
 import { api, ApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
@@ -346,7 +346,7 @@ function TokensSection({ wid }: { wid: string }) {
               {tokens.map((t) => (
                 <TR key={t.id}>
                   <TD className="font-medium text-foreground">{t.name}</TD>
-                  <TD className="font-mono text-xs text-muted-foreground">nr_…{t.lastFour}</TD>
+                  <TD className="font-mono text-xs text-muted-foreground">ys_…{t.lastFour}</TD>
                   <TD className="text-xs text-muted-foreground">
                     {t.lastUsedAt ? timeAgo(t.lastUsedAt) : 'never'}
                   </TD>

@@ -10,6 +10,6 @@ export default defineConfig({
   // Bundle the internal workspace packages (consumed as source) into the output
   // so the production image needs no workspace symlinks. Keep native/heavy deps
   // external.
-  noExternal: [/@noderail\//],
+  noExternal: [/@yourstack\//],
   external: ['@prisma/client', '.prisma/client'],
 });

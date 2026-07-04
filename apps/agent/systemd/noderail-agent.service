@@ -1,6 +1,6 @@
 [Unit]
-Description=NodeRail node agent
-Documentation=https://noderail.dev/docs/agent
+Description=YourStack node agent
+Documentation=https://yourstack.dev/docs/agent
 # The agent talks to Docker; start after the daemon is up.
 After=network-online.target docker.service
 Wants=network-online.target
@@ -8,26 +8,26 @@ Requires=docker.service
 
 [Service]
 Type=simple
-User=noderail
-Group=noderail
-# The noderail user must be a member of the `docker` group to reach the socket.
-# The install script adds it: `usermod -aG docker noderail`.
+User=yourstack
+Group=yourstack
+# The yourstack user must be a member of the `docker` group to reach the socket.
+# The install script adds it: `usermod -aG docker yourstack`.
 SupplementaryGroups=docker
 
-ExecStart=/usr/local/bin/noderail-agent run --config /etc/noderail/agent.toml
+ExecStart=/usr/local/bin/yourstack-agent run --config /etc/yourstack/agent.toml
 Restart=always
 RestartSec=5
 # Give in-flight commands a moment to report results before SIGKILL.
 TimeoutStopSec=30
 KillSignal=SIGTERM
 
-# State directory: systemd creates /var/lib/noderail owned by the service user.
-StateDirectory=noderail
+# State directory: systemd creates /var/lib/yourstack owned by the service user.
+StateDirectory=yourstack
 StateDirectoryMode=0750
-WorkingDirectory=/var/lib/noderail
+WorkingDirectory=/var/lib/yourstack
 
-# Environment (optional): raise log verbosity with NODERAIL_LOG=debug.
-Environment=NODERAIL_LOG=info
+# Environment (optional): raise log verbosity with YOURSTACK_LOG=debug.
+Environment=YOURSTACK_LOG=info
 
 # --- Hardening ---------------------------------------------------------------
 # The agent needs the Docker socket and outbound network; otherwise it is locked
@@ -36,7 +36,7 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 # Allow writing only to its state and config dirs.
-ReadWritePaths=/var/lib/noderail /etc/noderail
+ReadWritePaths=/var/lib/yourstack /etc/yourstack
 PrivateTmp=true
 ProtectKernelTunables=true
 ProtectKernelModules=true

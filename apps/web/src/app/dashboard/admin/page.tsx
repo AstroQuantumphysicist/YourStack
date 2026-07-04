@@ -13,7 +13,7 @@ import {
   Signal,
   Users,
 } from 'lucide-react';
-import type { AuditLogDTO } from '@noderail/shared';
+import type { AuditLogDTO } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
 import {
   api,

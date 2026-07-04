@@ -1,6 +1,6 @@
 import type { Job } from 'bullmq';
-import { webhookJobSchema } from '@noderail/shared';
-import { randomToken } from '@noderail/security';
+import { webhookJobSchema } from '@yourstack/shared';
+import { randomToken } from '@yourstack/security';
 import type { WorkerContext } from '../context.js';
 import { createDeployment } from '../lib/deploy.js';
 import { logger } from '../logger.js';
@@ -50,7 +50,7 @@ export async function processWebhook(ctx: WorkerContext, job: Job): Promise<void
             hostname,
             status: 'pending',
             isPreview: true,
-            verificationToken: `noderail-verify=${randomToken(12)}`,
+            verificationToken: `yourstack-verify=${randomToken(12)}`,
             dnsTarget: hostname,
           },
           update: {},

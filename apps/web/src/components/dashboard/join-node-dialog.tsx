@@ -99,7 +99,7 @@ export function JoinNodeDialog({
           <div className="flex items-start gap-2 rounded-xl border border-border bg-surface-muted p-3 text-xs text-muted-foreground">
             <Terminal className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <p>
-              The installer downloads the NodeRail agent, registers this machine with a one-time
+              The installer downloads the YourStack agent, registers this machine with a one-time
               token, and starts sending heartbeats. Docker is required on the target host.
             </p>
           </div>

@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
-import { SSE_CHANNELS } from '@noderail/shared';
+import { SSE_CHANNELS } from '@yourstack/shared';
 import { requireClient, resolveAppId, type GlobalFlags } from '../lib/context.js';
 import { info, printJson } from '../lib/output.js';
 import { formatLogLine } from '../lib/logfmt.js';

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-/** NodeRail mark: a stylized rail/node glyph rendered inline as SVG. */
+/** YourStack mark: a stylized rail/node glyph rendered inline as SVG. */
 export function Logo({ className, size = 28 }: { className?: string; size?: number }) {
   return (
     <svg
@@ -35,7 +35,7 @@ export function Wordmark({ className, size = 28 }: { className?: string; size?: 
   return (
     <span className={cn('inline-flex items-center gap-2', className)}>
       <Logo size={size} />
-      <span className="text-lg font-semibold tracking-tight text-foreground">NodeRail</span>
+      <span className="text-lg font-semibold tracking-tight text-foreground">YourStack</span>
     </span>
   );
 }

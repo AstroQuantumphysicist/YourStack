@@ -1,21 +1,21 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { randomHex } from '@noderail/security';
-import { AuditAction } from '@noderail/security';
+import { randomHex } from '@yourstack/security';
+import { AuditAction } from '@yourstack/security';
 import { createSession, destroySession, requireUser, SESSION_COOKIE } from '../lib/auth.js';
 import { toUserDTO, toWorkspaceDTO } from '../lib/dto.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
 import { slugify } from '../lib/util.js';
-import type { WorkspaceRole } from '@noderail/shared';
+import type { WorkspaceRole } from '@yourstack/shared';
 
-const OAUTH_STATE_COOKIE = 'nr_oauth_state';
+const OAUTH_STATE_COOKIE = 'ys_oauth_state';
 
 export default async function authRoutes(app: FastifyInstance) {
   const { prisma, github, config, audit } = app.ctx;
 
   // --- Begin GitHub OAuth ---
-  app.get('/auth/github', async (req, reply) => {
+  app.get('/auth/github', async (_req, reply) => {
     if (!github.configured) throw Errors.badRequest('GitHub OAuth is not configured');
     const state = randomHex(16);
     reply.setCookie(OAUTH_STATE_COOKIE, state, {
@@ -125,8 +125,8 @@ function setSessionCookie(
 }
 
 async function upsertOAuthUser(
-  prisma: import('@noderail/db').PrismaClient,
-  encryptor: import('@noderail/security').Encryptor,
+  prisma: import('@yourstack/db').PrismaClient,
+  encryptor: import('@yourstack/security').Encryptor,
   input: {
     provider: string;
     providerUserId: string;

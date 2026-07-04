@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { parse as yamlParse } from 'yaml';
-import { validateNoderailConfig } from '@noderail/shared';
-import { buildNoderailConfig, renderNoderailYaml } from './project.js';
+import { validateYourStackConfig } from '@yourstack/shared';
+import { buildYourStackConfig, renderYourStackYaml } from './project.js';
 
-describe('buildNoderailConfig', () => {
+describe('buildYourStackConfig', () => {
   it('produces a schema-valid config with only required fields', () => {
-    const config = buildNoderailConfig({ name: 'my-app', port: 3000 });
-    const result = validateNoderailConfig(config);
+    const config = buildYourStackConfig({ name: 'my-app', port: 3000 });
+    const result = validateYourStackConfig(config);
     expect(result.ok).toBe(true);
   });
 
   it('includes optional build/deploy fields when provided', () => {
-    const config = buildNoderailConfig({
+    const config = buildYourStackConfig({
       name: 'web',
       branch: 'release',
       install: 'pnpm install',
@@ -27,10 +27,10 @@ describe('buildNoderailConfig', () => {
   });
 
   it('renders YAML that round-trips back into a valid config', () => {
-    const config = buildNoderailConfig({ name: 'api', port: 4000, install: 'npm ci' });
-    const yaml = renderNoderailYaml(config);
+    const config = buildYourStackConfig({ name: 'api', port: 4000, install: 'npm ci' });
+    const yaml = renderYourStackYaml(config);
     expect(yaml).toContain('name: api');
     const reparsed = yamlParse(yaml);
-    expect(validateNoderailConfig(reparsed).ok).toBe(true);
+    expect(validateYourStackConfig(reparsed).ok).toBe(true);
   });
 });

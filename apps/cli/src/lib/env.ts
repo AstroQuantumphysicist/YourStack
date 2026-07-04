@@ -19,7 +19,7 @@ export function parseKeyValue(input: string): EnvPair {
     throw new CliError(
       `Invalid argument "${input}". Expected KEY=VALUE.`,
       1,
-      'Example: noderail env set DATABASE_URL=postgres://…',
+      'Example: yourstack env set DATABASE_URL=postgres://…',
     );
   }
   const key = input.slice(0, eq).trim();

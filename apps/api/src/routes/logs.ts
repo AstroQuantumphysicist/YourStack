@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import { logQuerySchema, Permission } from '@noderail/shared';
+import { logQuerySchema, Permission } from '@yourstack/shared';
 import { requirePermission } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
 
-async function appWorkspaceId(prisma: import('@noderail/db').PrismaClient, appId: string): Promise<string> {
+async function appWorkspaceId(prisma: import('@yourstack/db').PrismaClient, appId: string): Promise<string> {
   const app = await prisma.app.findFirst({ where: { id: appId, deletedAt: null }, include: { project: true } });
   if (!app) throw Errors.notFound('App not found');
   return app.project.workspaceId;

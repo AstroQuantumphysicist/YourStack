@@ -1,4 +1,4 @@
-import { loadConfig } from '@noderail/config';
+import { loadConfig } from '@yourstack/config';
 import { buildServer } from './server.js';
 import { disposeContext } from './context.js';
 import { logger } from './logger.js';
@@ -21,7 +21,7 @@ async function main() {
   process.on('unhandledRejection', (err) => logger.error({ err }, 'unhandledRejection'));
 
   await app.listen({ port: config.PORT, host: '0.0.0.0' });
-  logger.info(`NodeRail API listening on :${config.PORT} (${config.NODE_ENV})`);
+  logger.info(`YourStack API listening on :${config.PORT} (${config.NODE_ENV})`);
 }
 
 main().catch((err) => {

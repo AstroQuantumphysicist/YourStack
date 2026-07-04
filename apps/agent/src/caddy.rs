@@ -49,7 +49,7 @@ impl CaddyManager {
     /// configuration for the same domain replaces the previous route instead of
     /// accumulating duplicates.
     async fn apply_via_admin_api(&self, domain: &DomainConfig, host_port: u16) -> Result<String> {
-        let route_id = format!("noderail-{}", sanitize(&domain.domain));
+        let route_id = format!("yourstack-{}", sanitize(&domain.domain));
         let upstream = format!("127.0.0.1:{host_port}");
 
         // Delete any existing route with this id (ignore 404/errors), then append.

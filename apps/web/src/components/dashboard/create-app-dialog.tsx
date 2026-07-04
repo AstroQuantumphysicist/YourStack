@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import type { NodeDTO, ProjectDTO } from '@noderail/shared';
-import { AppFramework } from '@noderail/shared';
+import type { NodeDTO, ProjectDTO } from '@yourstack/shared';
+import { AppFramework } from '@yourstack/shared';
 import { api, ApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { Dialog } from '@/components/ui/dialog';

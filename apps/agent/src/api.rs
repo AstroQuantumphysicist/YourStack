@@ -6,7 +6,7 @@
 //! * `POST /v1/agent/commands/:id/result` — report result/progress (Bearer).
 //! * `POST /v1/agent/logs`                — batched build/runtime logs (Bearer).
 //!
-//! All authenticated calls send `Authorization: Bearer nra_...`. Network-level
+//! All authenticated calls send `Authorization: Bearer ysa_...`. Network-level
 //! failures are retried with capped exponential backoff; HTTP 4xx are returned to
 //! the caller (they indicate a contract/state problem, not a transient fault).
 
@@ -40,7 +40,7 @@ impl ApiClient {
     pub fn new(api_url: &str, token: Option<String>) -> Result<Self> {
         let http = Client::builder()
             .timeout(REQUEST_TIMEOUT)
-            .user_agent(concat!("noderail-agent/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("yourstack-agent/", env!("CARGO_PKG_VERSION")))
             .build()
             .context("building reqwest client")?;
         Ok(ApiClient {

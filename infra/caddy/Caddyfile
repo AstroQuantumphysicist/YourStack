@@ -1,7 +1,7 @@
 # =============================================================================
-# NodeRail — sample edge/reverse-proxy config for a "node".
+# YourStack — sample edge/reverse-proxy config for a "node".
 #
-# In production a NodeRail agent writes a Caddyfile like this on the user's own
+# In production a YourStack agent writes a Caddyfile like this on the user's own
 # server to route inbound traffic to deployed app containers and terminate TLS
 # automatically (Let's Encrypt). This dev copy fronts the local web + api on one
 # origin so you can test proxying end-to-end:
@@ -44,10 +44,10 @@
 # Production example (managed by the agent on a real node). TLS is automatic:
 #
 # app.example.com {
-#     reverse_proxy 127.0.0.1:4000        # NodeRail-deployed app container
+#     reverse_proxy 127.0.0.1:4000        # YourStack-deployed app container
 # }
 #
-# *.preview.noderail.example {
+# *.preview.yourstack.example {
 #     reverse_proxy 127.0.0.1:{app_port}  # per-deployment preview domains
 # }
 # ---------------------------------------------------------------------------

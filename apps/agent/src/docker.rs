@@ -186,7 +186,7 @@ impl DockerClient {
                     start_command.as_deref(),
                     default_port(spec),
                 );
-                let dockerfile_path = dir.join("Dockerfile.noderail");
+                let dockerfile_path = dir.join("Dockerfile.yourstack");
                 tokio::fs::write(&dockerfile_path, dockerfile_contents)
                     .await
                     .context("writing generated Dockerfile")?;

@@ -1,7 +1,7 @@
 //! Agent configuration persisted to `agent.toml`.
 //!
-//! On Linux the canonical path is `/etc/noderail/agent.toml` (written by the
-//! install script and owned by the `noderail` user). Everywhere else — and in
+//! On Linux the canonical path is `/etc/yourstack/agent.toml` (written by the
+//! install script and owned by the `yourstack` user). Everywhere else — and in
 //! `dev` mode — the agent uses `./agent.toml` in the working directory so it is
 //! trivial to run without root.
 
@@ -14,12 +14,12 @@ use serde::{Deserialize, Serialize};
 /// writes it after a successful join.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// Base URL of the control-plane API, e.g. `https://api.noderail.dev`.
+    /// Base URL of the control-plane API, e.g. `https://api.yourstack.dev`.
     pub api_url: String,
     /// Node id assigned at registration (empty until registered).
     #[serde(default)]
     pub node_id: String,
-    /// Long-lived agent auth token (`nra_...`). Empty until registered.
+    /// Long-lived agent auth token (`ysa_...`). Empty until registered.
     #[serde(default)]
     pub agent_token: String,
     /// Hex HMAC key used to verify command signatures. Empty until registered.
@@ -52,7 +52,7 @@ impl Default for Config {
 
 fn default_data_dir() -> String {
     if cfg!(target_os = "linux") {
-        "/var/lib/noderail".to_string()
+        "/var/lib/yourstack".to_string()
     } else {
         "./data".to_string()
     }
@@ -111,7 +111,7 @@ fn restrict_permissions(_path: &Path) {
 /// Resolve the default config path for the current platform.
 pub fn default_config_path() -> PathBuf {
     if cfg!(target_os = "linux") {
-        PathBuf::from("/etc/noderail/agent.toml")
+        PathBuf::from("/etc/yourstack/agent.toml")
     } else {
         PathBuf::from("./agent.toml")
     }

@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { Permission } from '@noderail/shared';
+import { Permission } from '@yourstack/shared';
 import { requirePermission } from '../lib/rbac.js';
 import { Errors } from '../lib/errors.js';
 
@@ -42,7 +42,7 @@ export default async function eventRoutes(app: FastifyInstance) {
 }
 
 async function authorizeChannel(
-  prisma: import('@noderail/db').PrismaClient,
+  prisma: import('@yourstack/db').PrismaClient,
   req: FastifyRequest,
   channel: string,
 ): Promise<void> {

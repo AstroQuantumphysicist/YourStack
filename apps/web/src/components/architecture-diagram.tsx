@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 /**
- * Inline SVG architecture diagram: the NodeRail Control Plane orchestrating
+ * Inline SVG architecture diagram: the YourStack Control Plane orchestrating
  * lightweight Agents running on the user's own servers.
  */
 export function ArchitectureDiagram({ className }: { className?: string }) {
@@ -10,7 +10,7 @@ export function ArchitectureDiagram({ className }: { className?: string }) {
       viewBox="0 0 800 380"
       className={cn('h-auto w-full', className)}
       role="img"
-      aria-label="NodeRail architecture: control plane connected to agents on your servers"
+      aria-label="YourStack architecture: control plane connected to agents on your servers"
     >
       <defs>
         <linearGradient id="arch-accent" x1="0" y1="0" x2="1" y2="1">
@@ -45,7 +45,7 @@ export function ArchitectureDiagram({ className }: { className?: string }) {
         />
         <circle cx="322" cy="60" r="10" fill="url(#arch-accent)" filter="url(#arch-glow)" />
         <text x="348" y="58" fill="hsl(var(--foreground))" fontSize="15" fontWeight="600">
-          NodeRail Control Plane
+          YourStack Control Plane
         </text>
         <text x="348" y="78" fill="hsl(var(--muted-foreground))" fontSize="11">
           API · Pipelines · Scheduler

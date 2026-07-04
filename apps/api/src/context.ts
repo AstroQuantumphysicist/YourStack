@@ -1,9 +1,9 @@
 import { Queue } from 'bullmq';
 import IORedis, { type Redis } from 'ioredis';
-import { prisma, type PrismaClient } from '@noderail/db';
-import { createEncryptor, type Encryptor, type AuditSink } from '@noderail/security';
-import { QUEUE_NAMES } from '@noderail/shared';
-import { loadConfig, type AppConfig } from '@noderail/config';
+import { prisma, type PrismaClient } from '@yourstack/db';
+import { createEncryptor, type Encryptor, type AuditSink } from '@yourstack/security';
+import { QUEUE_NAMES } from '@yourstack/shared';
+import { loadConfig, type AppConfig } from '@yourstack/config';
 import { logger } from './logger.js';
 import { RealtimeHub } from './realtime/hub.js';
 import { GithubClient } from './lib/github.js';

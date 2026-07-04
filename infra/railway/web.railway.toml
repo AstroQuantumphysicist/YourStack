@@ -1,5 +1,5 @@
 # =============================================================================
-# NodeRail web (Next.js) — Railway config-as-code TEMPLATE.
+# YourStack web (Next.js) — Railway config-as-code TEMPLATE.
 #
 # This file lives in infra/railway/ because the web app is owned by another
 # team. To use it, either:
@@ -11,7 +11,7 @@
 #   * Set the service Root Directory to the REPO ROOT.
 #   * NEXT_PUBLIC_API_URL is a BUILD-TIME variable (Next inlines it into the
 #     client bundle). Set it as a Railway build arg / service variable to your
-#     public API URL, e.g. https://api.noderail.example.
+#     public API URL, e.g. https://api.yourstack.example.
 #   * PORT is injected by Railway; the standalone server binds to it.
 # =============================================================================
 

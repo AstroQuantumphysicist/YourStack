@@ -4,7 +4,7 @@ import {
   DomainStatus,
   NodeStatus,
   PipelineRunStatus,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 import { Badge, type BadgeProps } from './badge';
 import { cn } from '@/lib/utils';
 

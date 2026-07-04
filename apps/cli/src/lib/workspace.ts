@@ -1,6 +1,6 @@
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
-import type { WorkspaceDTO } from '@noderail/shared';
+import type { WorkspaceDTO } from '@yourstack/shared';
 import type { ApiClient } from './client.js';
 import type { CliConfig } from './config.js';
 import { CliError } from './errors.js';

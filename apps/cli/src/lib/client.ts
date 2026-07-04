@@ -1,4 +1,4 @@
-import { API_VERSION } from '@noderail/shared';
+import { API_VERSION } from '@yourstack/shared';
 import type {
   AppDTO,
   DeploymentDTO,
@@ -7,7 +7,7 @@ import type {
   SecretDTO,
   UserDTO,
   WorkspaceDTO,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 import { apiError, CliError, networkError, type ApiErrorBody } from './errors.js';
 import { streamSse, type SseEvent } from './sse.js';
 
@@ -44,7 +44,7 @@ export interface StoredLog {
 }
 
 /**
- * Thin, typed wrapper over the NodeRail REST API. All requests target
+ * Thin, typed wrapper over the YourStack REST API. All requests target
  * `${apiUrl}/${API_VERSION}` and carry the personal API token as a Bearer
  * credential. Non-2xx responses are converted to friendly `CliError`s.
  */

@@ -1,5 +1,5 @@
 # =============================================================================
-# NodeRail — local development stack (control plane).
+# YourStack — local development stack (control plane).
 #
 #   docker compose -f infra/docker-compose.yml up -d          # core stack
 #   docker compose -f infra/docker-compose.yml --profile proxy up -d   # + caddy
@@ -16,11 +16,11 @@
 # partial-boot on migration failure).
 # =============================================================================
 
-name: noderail
+name: yourstack
 
-x-postgres-user: &pg_user ${POSTGRES_USER:-noderail}
-x-postgres-pass: &pg_pass ${POSTGRES_PASSWORD:-noderail}
-x-postgres-db: &pg_db ${POSTGRES_DB:-noderail}
+x-postgres-user: &pg_user ${POSTGRES_USER:-yourstack}
+x-postgres-pass: &pg_pass ${POSTGRES_PASSWORD:-yourstack}
+x-postgres-db: &pg_db ${POSTGRES_DB:-yourstack}
 
 services:
   postgres:
@@ -35,7 +35,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-noderail} -d ${POSTGRES_DB:-noderail}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yourstack} -d ${POSTGRES_DB:-yourstack}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -62,20 +62,20 @@ services:
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
-    image: noderail/api:dev
+    image: yourstack/api:dev
     restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-noderail}:${POSTGRES_PASSWORD:-noderail}@postgres:5432/${POSTGRES_DB:-noderail}?schema=public
-    command: ["pnpm", "--filter", "@noderail/db", "migrate:deploy"]
+      DATABASE_URL: postgresql://${POSTGRES_USER:-yourstack}:${POSTGRES_PASSWORD:-yourstack}@postgres:5432/${POSTGRES_DB:-yourstack}?schema=public
+    command: ["pnpm", "--filter", "@yourstack/db", "migrate:deploy"]
 
   api:
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
-    image: noderail/api:dev
+    image: yourstack/api:dev
     restart: unless-stopped
     depends_on:
       postgres:
@@ -89,7 +89,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: "4000"
-      DATABASE_URL: postgresql://${POSTGRES_USER:-noderail}:${POSTGRES_PASSWORD:-noderail}@postgres:5432/${POSTGRES_DB:-noderail}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-yourstack}:${POSTGRES_PASSWORD:-yourstack}@postgres:5432/${POSTGRES_DB:-yourstack}?schema=public
       REDIS_URL: redis://redis:6379
       PUBLIC_API_URL: http://localhost:4000
       PUBLIC_WEB_URL: http://localhost:3000
@@ -106,7 +106,7 @@ services:
     build:
       context: ..
       dockerfile: apps/worker/Dockerfile
-    image: noderail/worker:dev
+    image: yourstack/worker:dev
     restart: unless-stopped
     depends_on:
       postgres:
@@ -119,7 +119,7 @@ services:
       - .env
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://${POSTGRES_USER:-noderail}:${POSTGRES_PASSWORD:-noderail}@postgres:5432/${POSTGRES_DB:-noderail}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-yourstack}:${POSTGRES_PASSWORD:-yourstack}@postgres:5432/${POSTGRES_DB:-yourstack}?schema=public
       REDIS_URL: redis://redis:6379
 
   web:
@@ -128,7 +128,7 @@ services:
       dockerfile: infra/docker/web.Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
-    image: noderail/web:dev
+    image: yourstack/web:dev
     restart: unless-stopped
     depends_on:
       api:
@@ -172,9 +172,9 @@ services:
       api:
         condition: service_healthy
     environment:
-      NODERAIL_API_URL: http://api:4000
-      # Paste a one-time join token from `noderail nodes token` (see docs).
-      NODERAIL_JOIN_TOKEN: ${NODERAIL_JOIN_TOKEN:-}
+      YOURSTACK_API_URL: http://api:4000
+      # Paste a one-time join token from `yourstack nodes token` (see docs).
+      YOURSTACK_JOIN_TOKEN: ${YOURSTACK_JOIN_TOKEN:-}
       RUST_LOG: info
     # The agent controls containers on its host; in this demo it talks to the
     # host Docker daemon. Mounting the socket is a dev convenience only.

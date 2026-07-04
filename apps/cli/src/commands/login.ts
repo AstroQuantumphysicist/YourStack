@@ -10,25 +10,25 @@ import type { GlobalFlags } from '../lib/context.js';
 export function registerLogin(program: Command): void {
   program
     .command('login')
-    .description('Authenticate with a NodeRail API token')
-    .option('--token <token>', 'API token (nr_…). Also read from NODERAIL_TOKEN')
+    .description('Authenticate with a YourStack API token')
+    .option('--token <token>', 'API token (ys_…). Also read from YOURSTACK_TOKEN')
     .action(async (opts: { token?: string }, cmd: Command) => {
       const flags = cmd.optsWithGlobals() as GlobalFlags & { token?: string };
       const stored = await loadConfig();
       const apiUrl = (flags.apiUrl ?? stored.apiUrl ?? DEFAULT_API_URL).replace(/\/+$/, '');
 
-      let token = opts.token ?? process.env.NODERAIL_TOKEN?.trim();
+      let token = opts.token ?? process.env.YOURSTACK_TOKEN?.trim();
       if (!token) {
         const answer = await p.password({
           message: `Paste your API token for ${pc.cyan(apiUrl)}`,
-          validate: (v) => (v && v.startsWith('nr_') ? undefined : 'Tokens start with "nr_".'),
+          validate: (v) => (v && v.startsWith('ys_') ? undefined : 'Tokens start with "ys_".'),
         });
         if (p.isCancel(answer)) throw new CliError('Login cancelled.', 130);
         token = answer;
       }
       token = token.trim();
-      if (!token.startsWith('nr_')) {
-        throw new CliError('That does not look like a NodeRail API token (expected an "nr_" prefix).');
+      if (!token.startsWith('ys_')) {
+        throw new CliError('That does not look like a YourStack API token (expected an "ys_" prefix).');
       }
 
       // Validate the token by fetching the current identity.

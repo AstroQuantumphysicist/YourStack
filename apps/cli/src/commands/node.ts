@@ -5,7 +5,7 @@ import { info, printJson, renderTable, statusColor, success, timeAgo } from '../
 import { resolveWorkspaceId } from '../lib/workspace.js';
 
 export function registerNode(program: Command): void {
-  const node = program.command('node').description('Manage NodeRail nodes (your servers)');
+  const node = program.command('node').description('Manage YourStack nodes (your servers)');
 
   node
     .command('join')
@@ -36,7 +36,7 @@ export function registerNode(program: Command): void {
 
         const expires = new Date(res.expiresAt);
         info('');
-        info(pc.bold('Run this on the server you want to add to NodeRail:'));
+        info(pc.bold('Run this on the server you want to add to YourStack:'));
         info('');
         info('  ' + pc.cyan(res.installCommand));
         info('');

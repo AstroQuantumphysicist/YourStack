@@ -1,11 +1,11 @@
-import type { PrismaClient } from '@noderail/db';
-import { signCommand } from '@noderail/security';
+import type { PrismaClient } from '@yourstack/db';
+import { signCommand } from '@yourstack/security';
 import {
   COMMAND_DEFAULT_TIMEOUT_MS,
   SSE_CHANNELS,
   type CommandPayload,
   type CommandType,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 import type { RealtimeHub } from '../realtime/hub.js';
 
 export interface CreateCommandInput {

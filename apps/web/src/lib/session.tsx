@@ -9,10 +9,10 @@ import {
   useState,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import type { UserDTO, WorkspaceDTO } from '@noderail/shared';
+import type { UserDTO, WorkspaceDTO } from '@yourstack/shared';
 import { api, ApiError } from './api';
 
-const WS_STORAGE_KEY = 'noderail-workspace';
+const WS_STORAGE_KEY = 'yourstack-workspace';
 
 interface SessionState {
   user: UserDTO | null;

@@ -173,15 +173,15 @@ mod tests {
     }
 
     /// Cross-language golden vector: this exact key, canonical payload, and
-    /// signature were produced by the LIVE TypeScript control plane (@noderail/
+    /// signature were produced by the LIVE TypeScript control plane (@yourstack/
     /// security `signCommand`) for a real DEPLOY_APP command. If this passes, the
     /// Rust canonicalization + HMAC is byte-compatible with the signer.
     #[test]
     fn verify_accepts_real_control_plane_signature() {
         let hex_key = "309a3730859566ac50c2338a177ef8341fbc6ebb147626f09e3266433dc1ab89";
-        let signature = "1937dc2666478cde56b016d00eea3a691d5da4ae4015d25c3a0bb9123d309fbd";
+        let signature = "31e30857a35631c056f3dacaa104fb81742f167dca89274a90ca4753dfedded4";
         // The canonical (sorted) signable envelope emitted by the API.
-        let canonical = r#"{"id":"cmr6b26m6000niugpcqje4q8e","issuedAt":"2026-07-04T11:55:07.900Z","nodeId":"cmr6b268t000gej6pow7g70u5","payload":{"spec":{"appId":"cmr6b26d1000qej6psa84r1yv","containerName":"noderail-cmr6b26d1000qej6psa84r1yv","deploymentId":"cmr6b26fl0011ej6py2awlm8o","env":{"API_KEY":"super-secret-value-123","NODE_ENV":"production","PORT":"80"},"healthcheck":{"expectStatus":200,"intervalMs":3000,"path":"/","port":80,"retries":5,"timeoutMs":10000},"imageTag":"noderail/cmr6b26d1000qej6psa84r1yv:1","labels":{"io.noderail.app":"cmr6b26d1000qej6psa84r1yv","io.noderail.deployment":"cmr6b26fl0011ej6py2awlm8o","io.noderail.managed":"true","io.noderail.version":"1"},"networkName":"noderail_cmr6b26d1000qej6psa84r1yv","ports":[{"containerPort":80,"protocol":"tcp"}],"resources":{"cpu":0.5,"memoryMb":512},"source":{"image":"traefik/whoami:latest","kind":"image"},"strategy":"basic_replace"},"type":"DEPLOY_APP"},"timeoutMs":900000}"#;
+        let canonical = r#"{"id":"cmr6b26m6000niugpcqje4q8e","issuedAt":"2026-07-04T11:55:07.900Z","nodeId":"cmr6b268t000gej6pow7g70u5","payload":{"spec":{"appId":"cmr6b26d1000qej6psa84r1yv","containerName":"yourstack-cmr6b26d1000qej6psa84r1yv","deploymentId":"cmr6b26fl0011ej6py2awlm8o","env":{"API_KEY":"super-secret-value-123","NODE_ENV":"production","PORT":"80"},"healthcheck":{"expectStatus":200,"intervalMs":3000,"path":"/","port":80,"retries":5,"timeoutMs":10000},"imageTag":"yourstack/cmr6b26d1000qej6psa84r1yv:1","labels":{"io.yourstack.app":"cmr6b26d1000qej6psa84r1yv","io.yourstack.deployment":"cmr6b26fl0011ej6py2awlm8o","io.yourstack.managed":"true","io.yourstack.version":"1"},"networkName":"yourstack_cmr6b26d1000qej6psa84r1yv","ports":[{"containerPort":80,"protocol":"tcp"}],"resources":{"cpu":0.5,"memoryMb":512},"source":{"image":"traefik/whoami:latest","kind":"image"},"strategy":"basic_replace"},"type":"DEPLOY_APP"},"timeoutMs":900000}"#;
 
         // Re-canonicalizing the already-sorted JSON must be a no-op (idempotent).
         let parsed: Value = serde_json::from_str(canonical).unwrap();

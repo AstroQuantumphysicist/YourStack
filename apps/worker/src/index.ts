@@ -1,5 +1,5 @@
 import { Worker, type Job } from 'bullmq';
-import { QUEUE_NAMES } from '@noderail/shared';
+import { QUEUE_NAMES } from '@yourstack/shared';
 import { createContext, type WorkerContext } from './context.js';
 import { logger } from './logger.js';
 import { processDeploy } from './processors/deploy.js';
@@ -53,7 +53,7 @@ async function main() {
   ];
 
   await scheduleMaintenance(ctx);
-  logger.info(`NodeRail worker started (${workers.length} queues, ${ctx.config.NODE_ENV})`);
+  logger.info(`YourStack worker started (${workers.length} queues, ${ctx.config.NODE_ENV})`);
 
   // Simple health server so Railway/Docker can healthcheck the worker.
   startHealthServer(ctx);

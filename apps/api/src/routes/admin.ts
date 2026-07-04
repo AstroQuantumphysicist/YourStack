@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { AuditAction } from '@noderail/security';
+import { AuditAction } from '@yourstack/security';
 import { requirePlatformAdmin } from '../lib/rbac.js';
 import { toAuditDTO } from '../lib/dto.js';
 import { Errors } from '../lib/errors.js';

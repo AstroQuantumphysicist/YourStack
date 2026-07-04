@@ -6,7 +6,7 @@ import {
   QUEUE_NAMES,
   SSE_CHANNELS,
   type DomainJob,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 import { publish, type WorkerContext } from '../context.js';
 import { createSignedCommand } from '../lib/command.js';
 
@@ -60,7 +60,7 @@ export async function processDomain(ctx: WorkerContext, job: Job): Promise<void>
         type: CommandType.CONFIGURE_DOMAIN,
         spec: {
           appId: domain.appId,
-          containerName: `noderail-${domain.appId}`,
+          containerName: `yourstack-${domain.appId}`,
           domain: { domain: domain.hostname, autoHttps: domain.autoHttps, targetPort: domain.app.port },
         },
       },

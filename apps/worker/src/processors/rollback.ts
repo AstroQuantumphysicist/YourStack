@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq';
-import { CommandType, rollbackJobSchema, SSE_CHANNELS, type DeployAppSpec } from '@noderail/shared';
+import { CommandType, rollbackJobSchema, SSE_CHANNELS, type DeployAppSpec } from '@yourstack/shared';
 import { publish, type WorkerContext } from '../context.js';
 import { createSignedCommand } from '../lib/command.js';
 import { appendDeploymentLog } from '../lib/logs.js';

@@ -5,13 +5,13 @@ import { z } from 'zod';
  * the queue names and job payload schemas here guarantees both sides agree.
  */
 export const QUEUE_NAMES = {
-  DEPLOY: 'noderail.deploy',
-  PIPELINE: 'noderail.pipeline',
-  WEBHOOK: 'noderail.webhook',
-  HEALTHCHECK: 'noderail.healthcheck',
-  ROLLBACK: 'noderail.rollback',
-  DOMAIN: 'noderail.domain',
-  MAINTENANCE: 'noderail.maintenance',
+  DEPLOY: 'yourstack.deploy',
+  PIPELINE: 'yourstack.pipeline',
+  WEBHOOK: 'yourstack.webhook',
+  HEALTHCHECK: 'yourstack.healthcheck',
+  ROLLBACK: 'yourstack.rollback',
+  DOMAIN: 'yourstack.domain',
+  MAINTENANCE: 'yourstack.maintenance',
 } as const;
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 

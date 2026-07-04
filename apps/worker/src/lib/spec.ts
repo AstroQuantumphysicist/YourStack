@@ -3,8 +3,8 @@ import {
   DOCKER_LABEL_NAMESPACE,
   type DeployAppSpec,
   type DeploySource,
-} from '@noderail/shared';
-import type { App, Deployment, GitRepository } from '@noderail/db';
+} from '@yourstack/shared';
+import type { App, Deployment, GitRepository } from '@yourstack/db';
 import type { WorkerContext } from '../context.js';
 import { resolveEnvForApp } from './secrets.js';
 

@@ -1,5 +1,5 @@
-import type { Encryptor } from '@noderail/security';
-import type { PrismaClient } from '@noderail/db';
+import type { Encryptor } from '@yourstack/security';
+import type { PrismaClient } from '@yourstack/db';
 
 /** Resolve+decrypt the effective env for an app (project < app < environment). */
 export async function resolveEnvForApp(

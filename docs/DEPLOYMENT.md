@@ -1,6 +1,6 @@
-# NodeRail Deployment Guide
+# YourStack Deployment Guide
 
-This guide covers deploying the NodeRail **control plane** — the `api`, `worker`,
+This guide covers deploying the YourStack **control plane** — the `api`, `worker`,
 Postgres, and Redis. (The **data plane** is your fleet of nodes, each running the
 agent; joining a node is covered in the [README](../README.md#your-first-deployment).)
 
@@ -18,18 +18,18 @@ Both share the same [migration strategy](#3-migration-strategy),
 ## 0. Build & runtime facts
 
 The api and worker are ESM apps bundled by **tsup** into a single
-`dist/index.js`; internal `@noderail/*` packages are inlined, `@prisma/client` is
+`dist/index.js`; internal `@yourstack/*` packages are inlined, `@prisma/client` is
 kept external. Their real commands (from each `package.json`):
 
 | App | build | start |
 | --- | --- | --- |
-| `@noderail/api` | `tsup` → `apps/api/dist/index.js` | `node dist/index.js` |
-| `@noderail/worker` | `tsup` → `apps/worker/dist/index.js` | `node dist/index.js` |
-| `@noderail/web` | `next build` (standalone) | `node apps/web/server.js` |
+| `@yourstack/api` | `tsup` → `apps/api/dist/index.js` | `node dist/index.js` |
+| `@yourstack/worker` | `tsup` → `apps/worker/dist/index.js` | `node dist/index.js` |
+| `@yourstack/web` | `next build` (standalone) | `node apps/web/server.js` |
 
-The Prisma client is generated with `pnpm --filter @noderail/db generate` and
+The Prisma client is generated with `pnpm --filter @yourstack/db generate` and
 needs **openssl** at runtime (installed in the Dockerfiles). Migrations are
-`pnpm --filter @noderail/db migrate:deploy`.
+`pnpm --filter @yourstack/db migrate:deploy`.
 
 Canonical Dockerfiles: `apps/api/Dockerfile`, `apps/worker/Dockerfile`,
 `infra/docker/web.Dockerfile`. **All build with the repo root as context** —
@@ -69,7 +69,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "apps/api/Dockerfile"
 
 [deploy]
-preDeployCommand = "pnpm --filter @noderail/db migrate:deploy"
+preDeployCommand = "pnpm --filter @yourstack/db migrate:deploy"
 startCommand = "node dist/index.js"
 healthcheckPath = "/health"
 restartPolicyType = "ON_FAILURE"
@@ -140,7 +140,7 @@ Services:
 | worker | — | same dependencies |
 | web | 3000 | `NEXT_PUBLIC_API_URL` passed as build arg |
 | caddy | 8080/8443 | profile `proxy`: single-origin reverse proxy |
-| agent | — | profile `nodes`: a dev node agent (needs `NODERAIL_JOIN_TOKEN`) |
+| agent | — | profile `nodes`: a dev node agent (needs `YOURSTACK_JOIN_TOKEN`) |
 
 `DATABASE_URL`/`REDIS_URL` are pinned to the compose network hosts, so they are
 correct regardless of the `.env` file. Enable the optional pieces:
@@ -178,7 +178,7 @@ orchestrator.
 
 - **API** is stateless — scale horizontally (`numReplicas` on Railway, more
   replicas behind a load balancer self-hosted). SSE still works across instances
-  because events fan out over the single Redis pub/sub channel (`noderail:events`).
+  because events fan out over the single Redis pub/sub channel (`yourstack:events`).
 - **Worker** scales horizontally too; BullMQ distributes jobs. Per-queue
   concurrency is set in `apps/worker/src/index.ts` (DEPLOY 4, WEBHOOK 8,
   HEALTHCHECK 8, ROLLBACK 4, DOMAIN 4, MAINTENANCE 2). Run **one logical worker
@@ -186,8 +186,8 @@ orchestrator.
   modest to avoid redundant maintenance churn.
 - **Postgres/Redis** are the scaling floor — use a managed Postgres with adequate
   connections (Prisma pools per instance) and a Redis with enough memory for
-  queues + pub/sub. Watch the `/metrics` gauges (`noderail_commands_queued`,
-  `noderail_nodes_online`) to size the fleet.
+  queues + pub/sub. Watch the `/metrics` gauges (`yourstack_commands_queued`,
+  `yourstack_nodes_online`) to size the fleet.
 - **Data plane** scales by adding nodes; each node's capacity is bounded by its own
   hardware and the plan's `maxNodes`/`maxApps`.
 
@@ -199,7 +199,7 @@ orchestrator.
   Postgres backup/restore; self-hosted, schedule `pg_dump` (or continuous WAL
   archiving) and test restores.
   ```bash
-  pg_dump "$DATABASE_URL" --format=custom --file=noderail-$(date +%F).dump
+  pg_dump "$DATABASE_URL" --format=custom --file=yourstack-$(date +%F).dump
   ```
 - **Secrets are only recoverable with `SECRETS_ENCRYPTION_KEY`.** A database backup
   is useless without the key, and losing the key makes every stored secret

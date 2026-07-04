@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildDeploySpec } from '../lib/spec.js';
 import type { WorkerContext } from '../context.js';
-import type { App, Deployment, GitRepository } from '@noderail/db';
+import type { App, Deployment, GitRepository } from '@yourstack/db';
 
 /** Minimal stub context: only the methods buildDeploySpec touches. */
 function stubCtx(): WorkerContext {
@@ -57,7 +57,7 @@ describe('buildDeploySpec', () => {
       expect(spec.source.cloneToken).toBe('ghtoken');
       expect(spec.source.framework).toBe('nextjs');
     }
-    expect(spec.imageTag).toBe('noderail/app_123:3');
+    expect(spec.imageTag).toBe('yourstack/app_123:3');
     expect(spec.env.PORT).toBe('3000');
   });
 

@@ -1,9 +1,9 @@
-import type { PrismaClient } from '@noderail/db';
+import type { PrismaClient } from '@yourstack/db';
 import {
   QUEUE_NAMES,
   SSE_CHANNELS,
   type DeployJob,
-} from '@noderail/shared';
+} from '@yourstack/shared';
 import type { Queue } from 'bullmq';
 import { Errors } from '../lib/errors.js';
 import { todayKey } from '../lib/util.js';

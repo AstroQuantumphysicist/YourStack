@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { verifyGithubWebhook } from '@noderail/security';
-import { QUEUE_NAMES, type WebhookJob } from '@noderail/shared';
+import { verifyGithubWebhook } from '@yourstack/security';
+import { QUEUE_NAMES, type WebhookJob } from '@yourstack/shared';
 import { Errors } from '../lib/errors.js';
 
 /**

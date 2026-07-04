@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { AGENT_PROTOCOL_VERSION } from '@noderail/shared';
+import { AGENT_PROTOCOL_VERSION } from '@yourstack/shared';
 
 /** Liveness + readiness. `/health` is used by Railway/Docker healthchecks. */
 export default async function healthRoutes(app: FastifyInstance) {
@@ -23,7 +23,7 @@ export default async function healthRoutes(app: FastifyInstance) {
   });
 
   app.get('/version', async () => ({
-    service: 'noderail-api',
+    service: 'yourstack-api',
     protocolVersion: AGENT_PROTOCOL_VERSION,
   }));
 }

@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import { createDomainSchema, Permission, QUEUE_NAMES, type DomainJob } from '@noderail/shared';
-import { randomToken, AuditAction } from '@noderail/security';
+import { createDomainSchema, Permission, QUEUE_NAMES, type DomainJob } from '@yourstack/shared';
+import { randomToken, AuditAction } from '@yourstack/security';
 import { requirePermission } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
 import { toDomainDTO } from '../lib/dto.js';
 
-async function appWorkspace(prisma: import('@noderail/db').PrismaClient, appId: string) {
+async function appWorkspace(prisma: import('@yourstack/db').PrismaClient, appId: string) {
   const app = await prisma.app.findFirst({ where: { id: appId, deletedAt: null }, include: { project: true, node: true } });
   if (!app) throw Errors.notFound('App not found');
   return app;
@@ -40,7 +40,7 @@ export default async function domainRoutes(app: FastifyInstance) {
         appId: id,
         hostname: body.hostname,
         status: 'pending',
-        verificationToken: `noderail-verify=${randomToken(16)}`,
+        verificationToken: `yourstack-verify=${randomToken(16)}`,
         dnsTarget,
         autoHttps: true,
       },

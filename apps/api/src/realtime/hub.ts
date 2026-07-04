@@ -1,6 +1,6 @@
 import IORedis, { type Redis } from 'ioredis';
 
-const GLOBAL_CHANNEL = 'noderail:events';
+const GLOBAL_CHANNEL = 'yourstack:events';
 
 export interface RealtimeEvent {
   channel: string;

@@ -1,5 +1,5 @@
-import { SSE_CHANNELS, type LogSeverity } from '@noderail/shared';
-import { redactLine } from '@noderail/security';
+import { SSE_CHANNELS, type LogSeverity } from '@yourstack/shared';
+import { redactLine } from '@yourstack/security';
 import { publish, type WorkerContext } from '../context.js';
 
 /**

@@ -4,7 +4,7 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
-import type { AppConfig } from '@noderail/config';
+import type { AppConfig } from '@yourstack/config';
 
 /**
  * Registers baseline HTTP security: Helmet headers, locked-down CORS (only the

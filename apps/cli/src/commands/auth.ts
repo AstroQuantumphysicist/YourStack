@@ -45,6 +45,6 @@ export function registerLogout(program: Command): void {
         warn('Could not reach the API to end the session; clearing local credentials anyway.');
       }
       await clearConfig();
-      success(`Logged out. Run ${pc.cyan('noderail login')} to sign back in.`);
+      success(`Logged out. Run ${pc.cyan('yourstack login')} to sign back in.`);
     });
 }

@@ -4,12 +4,12 @@ import { Providers } from './providers';
 
 export const metadata: Metadata = {
   title: {
-    default: 'NodeRail — Bring your own server. We turn it into a cloud.',
-    template: '%s · NodeRail',
+    default: 'YourStack — Bring your own server. We turn it into a cloud.',
+    template: '%s · YourStack',
   },
   description:
-    'NodeRail is a premium bring-your-own-server cloud platform. Connect your own nodes and deploy apps, pipelines, secrets and domains with a control plane you own.',
-  applicationName: 'NodeRail',
+    'YourStack is a premium bring-your-own-server cloud platform. Connect your own nodes and deploy apps, pipelines, secrets and domains with a control plane you own.',
+  applicationName: 'YourStack',
 };
 
 export const viewport: Viewport = {
@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 const themeScript = `
 (function(){
   try {
-    var t = localStorage.getItem('noderail-theme') || 'dark';
+    var t = localStorage.getItem('yourstack-theme') || 'dark';
     var r = document.documentElement;
     r.classList.add(t === 'light' ? 'light' : 'dark');
     r.style.colorScheme = t;

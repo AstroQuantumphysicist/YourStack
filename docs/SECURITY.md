@@ -1,6 +1,6 @@
-# NodeRail Security Model
+# YourStack Security Model
 
-NodeRail runs untrusted code (user apps) on user-owned servers, orchestrated by a
+YourStack runs untrusted code (user apps) on user-owned servers, orchestrated by a
 multi-tenant control plane. This document describes the threat model, the agent's
 strictly-bounded capabilities, secret handling, webhook verification, the node
 trust model, RBAC, and planned hardening. It reflects the **actual
@@ -25,7 +25,7 @@ implementation** in `packages/security/*` and `apps/api/src/*`.
 1. **Browser/CLI ↔ API** — cookie sessions or Bearer tokens over TLS.
 2. **API ↔ Worker** — shared Postgres + Redis inside the control-plane network.
 3. **Control plane ↔ Node agent** — the internet. This is the highest-risk
-   boundary: the node runs on hardware NodeRail does not control.
+   boundary: the node runs on hardware YourStack does not control.
 4. **Node agent ↔ user workloads** — the agent supervises Docker containers.
 
 **Adversaries considered**
@@ -113,7 +113,7 @@ patterns before any log line is persisted or streamed:
 - All secret values of length ≥ 4 are matched **longest-first** (so short values
   can't leave partial masks) and replaced with `***REDACTED***`.
 - Heuristic patterns catch credentials even if they aren't registered secrets:
-  NodeRail tokens (`nr_`, `nra_`, `nrj_`), GitHub PATs (`ghp_…`, `github_pat_…`),
+  YourStack tokens (`ys_`, `ysa_`, `ysj_`), GitHub PATs (`ghp_…`, `github_pat_…`),
   AWS access keys (`AKIA…`), Slack tokens (`xox[baprs]-…`), and PEM private-key
   blocks.
 
@@ -151,7 +151,7 @@ tokens. Plaintext is shown exactly once at creation.
 
 - Minted by `POST /v1/workspaces/:id/nodes/join-token` (permission `node:join`),
   subject to the plan's `maxNodes`.
-- Format `nrj_…` (32 bytes, base64url). Only the SHA-256 **hash** is stored
+- Format `ysj_…` (32 bytes, base64url). Only the SHA-256 **hash** is stored
   (`NodeJoinToken.tokenHash`, unique).
 - **TTL 15 minutes** (`JOIN_TOKEN_TTL_MS`), **single use** — registration sets
   `usedAt`/`usedByNode`, and the `cleanup` maintenance job purges expired/old
@@ -161,8 +161,8 @@ tokens. Plaintext is shown exactly once at creation.
 
 On `POST /v1/agent/register` with a valid join token, the API mints:
 
-- an **agent token** (`nra_…`, 40 bytes) — stored as `Node.agentTokenHash`
-  (unique SHA-256); the agent presents it as `Authorization: Bearer nra_…`.
+- an **agent token** (`ysa_…`, 40 bytes) — stored as `Node.agentTokenHash`
+  (unique SHA-256); the agent presents it as `Authorization: Bearer ysa_…`.
 - a **command key** (32 random bytes, hex) — stored as `Node.commandKey`, the
   HMAC key for signing that node's commands.
 
@@ -227,7 +227,7 @@ Helpers: `roleHasPermission(role, perm)`, `permissionsForRole(role)`,
   `CORS_ORIGINS` with credentials.
 - **Cookies** signed with `SESSION_SECRET`; `httpOnly`, `sameSite=lax`,
   `secure` in production, optional `SESSION_COOKIE_DOMAIN`. Session cookie is
-  `nr_session`, 30-day TTL.
+  `ys_session`, 30-day TTL.
 - **Rate limiting** (Redis-backed) keyed by user id or IP, default
   `RATE_LIMIT_MAX=300` per `RATE_LIMIT_WINDOW=1 minute`; `/health` and `/metrics`
   are allowlisted.

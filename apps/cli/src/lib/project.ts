@@ -1,10 +1,10 @@
 import { join } from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { stringify as yamlStringify } from 'yaml';
-import type { NoderailConfig } from '@noderail/shared';
+import type { YourStackConfig } from '@yourstack/shared';
 
 /**
- * The local link file written by `noderail init`, associating the current
+ * The local link file written by `yourstack init`, associating the current
  * directory with a workspace / project / app on the server.
  */
 export interface ProjectLink {
@@ -17,14 +17,14 @@ export interface ProjectLink {
   appName?: string;
 }
 
-const LINK_DIR = '.noderail';
+const LINK_DIR = '.yourstack';
 const LINK_FILE = 'project.json';
 
 function linkPath(cwd: string): string {
   return join(cwd, LINK_DIR, LINK_FILE);
 }
 
-/** Read the `.noderail/project.json` link for a directory, if present. */
+/** Read the `.yourstack/project.json` link for a directory, if present. */
 export async function loadProjectLink(cwd = process.cwd()): Promise<ProjectLink | null> {
   try {
     const raw = await readFile(linkPath(cwd), 'utf8');
@@ -34,7 +34,7 @@ export async function loadProjectLink(cwd = process.cwd()): Promise<ProjectLink 
   }
 }
 
-/** Write the `.noderail/project.json` link for a directory. */
+/** Write the `.yourstack/project.json` link for a directory. */
 export async function saveProjectLink(link: ProjectLink, cwd = process.cwd()): Promise<string> {
   const dir = join(cwd, LINK_DIR);
   await mkdir(dir, { recursive: true });
@@ -44,11 +44,11 @@ export async function saveProjectLink(link: ProjectLink, cwd = process.cwd()): P
 }
 
 /**
- * Build a `noderail.yml` document that satisfies `noderailConfigSchema`. Only
+ * Build a `yourstack.yml` document that satisfies `yourstackConfigSchema`. Only
  * the fields the user chose are emitted; the rest fall back to schema defaults
  * at parse time.
  */
-export function buildNoderailConfig(input: {
+export function buildYourStackConfig(input: {
   name: string;
   branch?: string;
   install?: string;
@@ -56,8 +56,8 @@ export function buildNoderailConfig(input: {
   start?: string;
   port: number;
   healthcheckPath?: string;
-}): NoderailConfig {
-  const config: NoderailConfig = {
+}): YourStackConfig {
+  const config: YourStackConfig = {
     name: input.name,
     on: {
       push: { branches: [input.branch ?? 'main'] },
@@ -78,17 +78,17 @@ export function buildNoderailConfig(input: {
 }
 
 /** Serialize a config to YAML with a short explanatory header. */
-export function renderNoderailYaml(config: NoderailConfig): string {
+export function renderYourStackYaml(config: YourStackConfig): string {
   const header =
-    '# noderail.yml — NodeRail pipeline configuration.\n' +
+    '# yourstack.yml — YourStack pipeline configuration.\n' +
     '# Committed to your repo; read by the build worker on each deploy.\n' +
-    '# Docs: https://noderail.dev/docs/config\n\n';
+    '# Docs: https://yourstack.dev/docs/config\n\n';
   return header + yamlStringify(config);
 }
 
-/** Write `noderail.yml` into a directory. Returns the absolute path. */
-export async function writeNoderailYaml(config: NoderailConfig, cwd = process.cwd()): Promise<string> {
-  const path = join(cwd, 'noderail.yml');
-  await writeFile(path, renderNoderailYaml(config));
+/** Write `yourstack.yml` into a directory. Returns the absolute path. */
+export async function writeYourStackYaml(config: YourStackConfig, cwd = process.cwd()): Promise<string> {
+  const path = join(cwd, 'yourstack.yml');
+  await writeFile(path, renderYourStackYaml(config));
   return path;
 }

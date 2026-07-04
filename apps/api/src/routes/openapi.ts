@@ -1,5 +1,5 @@
 import fp from 'fastify-plugin';
-import { API_VERSION } from '@noderail/shared';
+import { API_VERSION } from '@yourstack/shared';
 
 interface RouteInfo {
   method: string;
@@ -36,15 +36,15 @@ export default fp(async function openapiPlugin(app) {
     return {
       openapi: '3.1.0',
       info: {
-        title: 'NodeRail API',
+        title: 'YourStack API',
         version: '0.1.0',
-        description: 'Control-plane API for the NodeRail BYOC platform.',
+        description: 'Control-plane API for the YourStack BYOC platform.',
       },
       servers: [{ url: `/${API_VERSION}` }],
       components: {
         securitySchemes: {
-          sessionCookie: { type: 'apiKey', in: 'cookie', name: 'nr_session' },
-          bearerToken: { type: 'http', scheme: 'bearer', description: 'Personal API token (nr_...)' },
+          sessionCookie: { type: 'apiKey', in: 'cookie', name: 'ys_session' },
+          bearerToken: { type: 'http', scheme: 'bearer', description: 'Personal API token (ys_...)' },
         },
       },
       paths,
@@ -59,7 +59,7 @@ export default fp(async function openapiPlugin(app) {
 const SWAGGER_HTML = `<!doctype html>
 <html>
   <head>
-    <title>NodeRail API Docs</title>
+    <title>YourStack API Docs</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />

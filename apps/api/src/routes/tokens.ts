@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { createApiTokenSchema, Permission } from '@noderail/shared';
-import { generateApiToken, AuditAction } from '@noderail/security';
+import { createApiTokenSchema, Permission } from '@yourstack/shared';
+import { generateApiToken, AuditAction } from '@yourstack/security';
 import { requireUser } from '../lib/auth.js';
 import { requirePermission } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';

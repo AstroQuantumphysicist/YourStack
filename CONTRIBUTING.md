@@ -1,6 +1,6 @@
-# Contributing to NodeRail
+# Contributing to YourStack
 
-Thanks for your interest in NodeRail — _bring your own server, we turn it into a cloud._
+Thanks for your interest in YourStack — _bring your own server, we turn it into a cloud._
 This guide covers local setup, the repo layout, coding standards, and the PR
 workflow.
 
@@ -19,7 +19,7 @@ not tolerated. Report concerns to the maintainers.
 ## Getting started
 
 ```bash
-git clone <repo-url> noderail && cd noderail
+git clone <repo-url> yourstack && cd yourstack
 pnpm install
 cp .env.example .env                 # control-plane env for `pnpm dev`
 cp infra/.env.example infra/.env     # env for the docker-compose stack
@@ -39,7 +39,7 @@ apps/
   api/      Fastify control-plane API (TypeScript, ESM, tsup)
   worker/   BullMQ background worker (deploy pipeline, maintenance)
   web/      Next.js dashboard
-  cli/      `noderail` command-line client
+  cli/      `yourstack` command-line client
   agent/    Rust node agent (runs on user servers)
 packages/
   config/   Typed env loading (zod)
@@ -67,7 +67,7 @@ workspaces. Common commands:
 | `pnpm format` | Prettier write |
 
 Scope commands to one workspace with `--filter`, e.g.
-`pnpm --filter @noderail/api dev`.
+`pnpm --filter @yourstack/api dev`.
 
 ## Coding standards
 

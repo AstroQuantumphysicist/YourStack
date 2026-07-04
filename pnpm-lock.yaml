@@ -56,21 +56,21 @@ importers:
       '@fastify/sensible':
         specifier: ^6.0.1
         version: 6.0.4
-      '@noderail/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@noderail/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@noderail/security':
-        specifier: workspace:*
-        version: link:../../packages/security
-      '@noderail/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@prisma/client':
         specifier: ^5.20.0
         version: 5.22.0(prisma@5.22.0)
+      '@yourstack/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@yourstack/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@yourstack/security':
+        specifier: workspace:*
+        version: link:../../packages/security
+      '@yourstack/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       bullmq:
         specifier: ^5.13.2
         version: 5.79.2
@@ -117,7 +117,7 @@ importers:
       '@clack/prompts':
         specifier: ^0.7.0
         version: 0.7.0
-      '@noderail/shared':
+      '@yourstack/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       commander:
@@ -151,7 +151,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@noderail/shared':
+      '@yourstack/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       class-variance-authority:
@@ -209,21 +209,21 @@ importers:
 
   apps/worker:
     dependencies:
-      '@noderail/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@noderail/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@noderail/security':
-        specifier: workspace:*
-        version: link:../../packages/security
-      '@noderail/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@prisma/client':
         specifier: ^5.20.0
         version: 5.22.0(prisma@5.22.0)
+      '@yourstack/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@yourstack/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@yourstack/security':
+        specifier: workspace:*
+        version: link:../../packages/security
+      '@yourstack/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       bullmq:
         specifier: ^5.13.2
         version: 5.79.2
@@ -280,15 +280,15 @@ importers:
 
   packages/db:
     dependencies:
-      '@noderail/security':
-        specifier: workspace:*
-        version: link:../security
-      '@noderail/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@prisma/client':
         specifier: ^5.20.0
         version: 5.22.0(prisma@5.22.0)
+      '@yourstack/security':
+        specifier: workspace:*
+        version: link:../security
+      '@yourstack/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       '@types/node':
         specifier: ^20.14.0
@@ -308,7 +308,7 @@ importers:
 
   packages/security:
     dependencies:
-      '@noderail/shared':
+      '@yourstack/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:

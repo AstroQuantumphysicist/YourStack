@@ -17,7 +17,7 @@ export class CliError extends Error {
   }
 }
 
-/** Shape of the JSON error envelope returned by the NodeRail API. */
+/** Shape of the JSON error envelope returned by the YourStack API. */
 export interface ApiErrorBody {
   error?: { code?: string; message?: string; details?: unknown; requestId?: string };
 }
@@ -33,7 +33,7 @@ export function apiError(status: number, body: ApiErrorBody | null, url: string)
       return new CliError(
         message ?? 'Not authenticated.',
         1,
-        `Run ${pc.cyan('noderail login')} to sign in with an API token.`,
+        `Run ${pc.cyan('yourstack login')} to sign in with an API token.`,
       );
     case 402:
       return new CliError(
@@ -82,7 +82,7 @@ function formatDetails(details: unknown): string | undefined {
 export function networkError(err: unknown, apiUrl: string): CliError {
   const detail = err instanceof Error ? err.message : String(err);
   return new CliError(
-    `Could not reach the NodeRail API at ${apiUrl}.`,
+    `Could not reach the YourStack API at ${apiUrl}.`,
     1,
     `${detail}\nIs the API running, and is your ${pc.cyan('--api-url')} correct?`,
   );

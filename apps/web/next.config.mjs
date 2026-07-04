@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   // Consume the internal package as source (its main points at ./src/index.ts).
-  transpilePackages: ['@noderail/shared'],
+  transpilePackages: ['@yourstack/shared'],
   // Emit a self-contained server bundle for Docker.
   output: 'standalone',
   eslint: {
@@ -18,7 +18,7 @@ const nextConfig = {
     ],
   },
   webpack: (config) => {
-    // @noderail/shared is consumed as TypeScript source and uses ESM-style
+    // @yourstack/shared is consumed as TypeScript source and uses ESM-style
     // `.js` import specifiers that actually point at `.ts` files. Teach
     // webpack to resolve `.js` → `.ts`/`.tsx` so those imports resolve.
     config.resolve.extensionAlias = {

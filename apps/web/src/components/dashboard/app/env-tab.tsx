@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { KeyRound, Pencil, Plus, Trash2 } from 'lucide-react';
-import type { SecretDTO } from '@noderail/shared';
-import { SecretScope } from '@noderail/shared';
+import type { SecretDTO } from '@yourstack/shared';
+import { SecretScope } from '@yourstack/shared';
 import { api, ApiError } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { Card } from '@/components/ui/card';

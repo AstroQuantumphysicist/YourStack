@@ -11,7 +11,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-const STORAGE_KEY = 'noderail-theme';
+const STORAGE_KEY = 'yourstack-theme';
 
 function apply(theme: Theme) {
   const root = document.documentElement;

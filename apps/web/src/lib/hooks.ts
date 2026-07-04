@@ -1,7 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
-import type { AppDTO, ProjectDTO } from '@noderail/shared';
+import type { AppDTO, ProjectDTO } from '@yourstack/shared';
 import { api } from './api';
 
 export interface AppWithProject extends AppDTO {

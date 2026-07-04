@@ -11,7 +11,7 @@ import {
   Signal,
   TrendingUp,
 } from 'lucide-react';
-import type { AuditLogDTO, WorkspaceStatsDTO } from '@noderail/shared';
+import type { AuditLogDTO, WorkspaceStatsDTO } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/dashboard/stat-card';

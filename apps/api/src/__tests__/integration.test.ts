@@ -54,19 +54,19 @@ describe('API integration', () => {
     const login = await app!.inject({
       method: 'POST',
       url: '/v1/auth/dev-login',
-      payload: { email: 'admin@noderail.local' },
+      payload: { email: 'admin@yourstack.local' },
     });
     expect(login.statusCode).toBe(200);
-    const cookie = login.cookies.find((c) => c.name === 'nr_session');
+    const cookie = login.cookies.find((c) => c.name === 'ys_session');
     expect(cookie).toBeTruthy();
 
     const me = await app!.inject({
       method: 'GET',
       url: '/v1/auth/me',
-      cookies: { nr_session: cookie!.value },
+      cookies: { ys_session: cookie!.value },
     });
     expect(me.statusCode).toBe(200);
-    expect(me.json().user.email).toBe('admin@noderail.local');
+    expect(me.json().user.email).toBe('admin@yourstack.local');
   });
 
   it('serves an OpenAPI document', async () => {

@@ -1,5 +1,5 @@
 {
-  "name": "@noderail/db",
+  "name": "@yourstack/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -27,8 +27,8 @@
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
-    "@noderail/shared": "workspace:*",
-    "@noderail/security": "workspace:*"
+    "@yourstack/shared": "workspace:*",
+    "@yourstack/security": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

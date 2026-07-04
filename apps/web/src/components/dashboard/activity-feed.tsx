@@ -1,4 +1,4 @@
-import type { AuditLogDTO } from '@noderail/shared';
+import type { AuditLogDTO } from '@yourstack/shared';
 import { Activity } from 'lucide-react';
 import { timeAgo } from '@/lib/format';
 import { EmptyState } from '@/components/ui/states';

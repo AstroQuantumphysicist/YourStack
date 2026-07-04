@@ -1,9 +1,9 @@
 import { Queue } from 'bullmq';
 import IORedis, { type Redis } from 'ioredis';
-import { prisma, type PrismaClient } from '@noderail/db';
-import { createEncryptor, type Encryptor } from '@noderail/security';
-import { QUEUE_NAMES } from '@noderail/shared';
-import { loadConfig, type AppConfig } from '@noderail/config';
+import { prisma, type PrismaClient } from '@yourstack/db';
+import { createEncryptor, type Encryptor } from '@yourstack/security';
+import { QUEUE_NAMES } from '@yourstack/shared';
+import { loadConfig, type AppConfig } from '@yourstack/config';
 import { logger } from './logger.js';
 
 export interface WorkerContext {
@@ -22,7 +22,7 @@ export interface WorkerContext {
   };
 }
 
-const GLOBAL_CHANNEL = 'noderail:events';
+const GLOBAL_CHANNEL = 'yourstack:events';
 
 export function createContext(): WorkerContext {
   const config = loadConfig();

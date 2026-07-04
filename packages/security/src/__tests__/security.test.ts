@@ -35,9 +35,9 @@ describe('passwords', () => {
 describe('tokens', () => {
   it('generates verifiable tokens', () => {
     const t = generateApiToken();
-    expect(t.plaintext.startsWith('nr_')).toBe(true);
+    expect(t.plaintext.startsWith('ys_')).toBe(true);
     expect(verifyToken(t.plaintext, t.hash)).toBe(true);
-    expect(verifyToken('nr_wrong', t.hash)).toBe(false);
+    expect(verifyToken('ys_wrong', t.hash)).toBe(false);
     expect(hashToken(t.plaintext)).toBe(t.hash);
   });
 });
@@ -66,8 +66,8 @@ describe('github webhook', () => {
 
 describe('redaction', () => {
   it('masks known secret values and heuristic tokens', () => {
-    const out = redactLine('token is nr_ABCDEFGHIJKLMNOPQRSTUVWX and pw=topsecret', ['topsecret']);
+    const out = redactLine('token is ys_ABCDEFGHIJKLMNOPQRSTUVWX and pw=topsecret', ['topsecret']);
     expect(out).not.toContain('topsecret');
-    expect(out).not.toContain('nr_ABCDEFGHIJKLMNOPQRSTUVWX');
+    expect(out).not.toContain('ys_ABCDEFGHIJKLMNOPQRSTUVWX');
   });
 });

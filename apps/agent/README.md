@@ -1,25 +1,25 @@
-# NodeRail Agent
+# YourStack Agent
 
-The Rust node agent for NodeRail's "bring your own server" platform. It runs on
+The Rust node agent for YourStack's "bring your own server" platform. It runs on
 an operator's machine, registers with the control plane using a one-time join
 token, and then executes cryptographically-signed, strongly-typed deployment
 commands against the local Docker daemon.
 
-It is a single static binary (`noderail-agent`) with no runtime dependencies
+It is a single static binary (`yourstack-agent`) with no runtime dependencies
 other than Docker (and Caddy if you use custom domains).
 
 ## Contents
 
 - `src/` — the agent (see module map below)
 - `scripts/install.sh`, `scripts/uninstall.sh` — POSIX installers
-- `systemd/noderail-agent.service` — hardened systemd unit
+- `systemd/yourstack-agent.service` — hardened systemd unit
 - `agent.toml.example` — annotated config
 
 ### Module map
 
 | Module | Responsibility |
 | --- | --- |
-| `protocol.rs` | serde structs mirroring `@noderail/shared` (commands, telemetry, logs) |
+| `protocol.rs` | serde structs mirroring `@yourstack/shared` (commands, telemetry, logs) |
 | `signing.rs` | canonical JSON + HMAC-SHA256 command signature verification |
 | `config.rs` | load/save `agent.toml` |
 | `api.rs` | typed HTTP client with retry/backoff |
@@ -33,7 +33,7 @@ other than Docker (and Caddy if you use custom domains).
 
 ```sh
 cargo build            # debug
-cargo build --release  # optimized static binary at target/release/noderail-agent
+cargo build --release  # optimized static binary at target/release/yourstack-agent
 cargo test             # unit tests (canonical JSON + HMAC verify, timestamps)
 ```
 
@@ -43,14 +43,14 @@ Linux-only crates are required.
 
 ## The join flow
 
-1. In the NodeRail dashboard (or CLI) create a **join token** (`nrj_...`). It is
+1. In the YourStack dashboard (or CLI) create a **join token** (`ysj_...`). It is
    single-use and short-lived (15 minutes).
 2. On the target server, register:
 
    ```sh
-   noderail-agent register \
-     --api-url https://api.noderail.dev \
-     --join-token nrj_xxx \
+   yourstack-agent register \
+     --api-url https://api.yourstack.dev \
+     --join-token ysj_xxx \
      --name my-edge-box
    ```
 
@@ -60,8 +60,8 @@ Linux-only crates are required.
 3. Run the daemon:
 
    ```sh
-   noderail-agent run          # uses /etc/noderail/agent.toml on Linux
-   noderail-agent dev          # verbose logging, local ./agent.toml
+   yourstack-agent run          # uses /etc/yourstack/agent.toml on Linux
+   yourstack-agent dev          # verbose logging, local ./agent.toml
    ```
 
 The daemon heartbeats every `heartbeatIntervalMs`, long-polls `GET
@@ -72,16 +72,16 @@ to `POST /v1/agent/logs`.
 ## One-line install (systemd)
 
 ```sh
-sudo NODERAIL_API_URL=https://api.noderail.dev \
-     NODERAIL_JOIN_TOKEN=nrj_xxx \
-     NODERAIL_BINARY_URL=https://dl.noderail.dev/agent/latest/noderail-agent \
+sudo YOURSTACK_API_URL=https://api.yourstack.dev \
+     YOURSTACK_JOIN_TOKEN=ysj_xxx \
+     YOURSTACK_BINARY_URL=https://dl.yourstack.dev/agent/latest/yourstack-agent \
      ./scripts/install.sh
 ```
 
-The installer creates the `noderail` system user (added to the `docker` group),
-writes `/etc/noderail/agent.toml`, registers the node, and installs + starts the
+The installer creates the `yourstack` system user (added to the `docker` group),
+writes `/etc/yourstack/agent.toml`, registers the node, and installs + starts the
 systemd unit. It is idempotent — re-run it to upgrade the binary. Uninstall with
-`sudo ./scripts/uninstall.sh` (`PURGE_DATA=1` to also drop `/var/lib/noderail`).
+`sudo ./scripts/uninstall.sh` (`PURGE_DATA=1` to also drop `/var/lib/yourstack`).
 
 ## Security model
 
@@ -96,12 +96,12 @@ systemd unit. It is idempotent — re-run it to upgrade the binary. Uninstall wi
   stream logs, healthcheck, configure domain, rollback). `git`/`docker`/`caddy`
   are shelled out with fixed argument vectors, never with control-plane strings
   as a shell command line.
-- **Least privilege.** Runs as the unprivileged `noderail` user. The systemd
+- **Least privilege.** Runs as the unprivileged `yourstack` user. The systemd
   unit applies `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, a
   private `/tmp`, and a narrow `ReadWritePaths`. Docker access is granted only
   via `docker` group membership.
 - **Secrets at rest.** `agent.toml` holds the agent token and HMAC key and is
-  written `0600`, owned by the `noderail` user.
+  written `0600`, owned by the `yourstack` user.
 - **TLS.** All control-plane traffic uses HTTPS (rustls); container env (which
   may contain decrypted secrets) is only ever transmitted over that channel.
 
