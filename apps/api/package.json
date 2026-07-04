@@ -1,0 +1,43 @@
+{
+  "name": "@noderail/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run",
+    "clean": "rimraf dist .turbo"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^10.0.1",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/helmet": "^12.0.1",
+    "@fastify/rate-limit": "^10.1.1",
+    "@fastify/sensible": "^6.0.1",
+    "@noderail/config": "workspace:*",
+    "@noderail/db": "workspace:*",
+    "@noderail/security": "workspace:*",
+    "@noderail/shared": "workspace:*",
+    "@prisma/client": "^5.20.0",
+    "bullmq": "^5.13.2",
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.1",
+    "ioredis": "^5.4.1",
+    "pino": "^9.4.0",
+    "undici": "^6.19.8",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "pino-pretty": "^11.2.2",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
+  }
+}

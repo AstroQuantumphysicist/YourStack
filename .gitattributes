@@ -1,0 +1,9 @@
+# Normalize line endings. Source and scripts use LF so agent install scripts
+# and Dockerfiles work correctly on Linux nodes regardless of author OS.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

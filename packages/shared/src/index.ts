@@ -9,3 +9,4 @@ export * from './schemas/commands.js';
 export * from './schemas/logs.js';
 export * from './schemas/pipeline.js';
 export * from './schemas/api.js';
+export * from './queue.js';
