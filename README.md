@@ -52,6 +52,27 @@ deploy target with the workflow you expect from a modern cloud:
 - **Safety by construction** — the agent executes only **typed, signed commands**;
   there is deliberately no "run arbitrary shell" capability.
 
+### Managed resources (v2) — a whole cloud, a few clicks
+
+Beyond apps, YourStack provisions first-class managed resources onto your own
+nodes — every one a typed, signed command the agent runs via the Docker Engine API:
+
+- **Databases** — one-click Postgres / MySQL / Redis / MongoDB with generated,
+  encrypted credentials, sized CPU/RAM/storage, and on-demand backups.
+- **Object storage** — S3-compatible buckets (MinIO) with access keys, quotas,
+  and public/private policy.
+- **Serverless functions** — Node / Python / Go / Bun functions with an HTTP
+  invoke URL, scale-to-zero, per-invocation metrics.
+- **CI runners** — self-hosted GitHub Actions runner pools; YourStack runs your
+  CI/CD on your nodes.
+- **Autoscaling** — per-app replica policies (target CPU / memory / RPS /
+  latency) driven by a proportional control loop over live metrics.
+- **Global regions** — a region catalog with region-aware placement of every
+  resource and request.
+- **Live observability** — the agent samples per-container CPU, RAM, requests/s,
+  latency, network and disk every 15s; the dashboard renders live time-series so
+  you can inspect worker load in real time.
+
 The **control plane** (this repo's `api` + `worker` + Postgres + Redis) is itself
 designed to be hosted on a managed platform such as **Railway**. The **data
 plane** is your fleet of nodes.

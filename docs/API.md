@@ -316,3 +316,56 @@ all API instances via a single Redis pub/sub channel (`yourstack:events`).
   personal `ys_…` token). Tags are derived from the second path segment; the spec
   is generated from the live route table.
 - **`GET /docs`** — Swagger UI pointed at `/openapi.json`.
+
+---
+
+## Managed resources (v2)
+
+All routes require the session cookie or a Bearer token and are gated by RBAC.
+Provisioning is asynchronous: the API creates the record, enqueues a job, the
+worker dispatches a **signed** node command, the agent executes it via Docker,
+and the API finalizes state on report-back (streamed over SSE).
+
+### Databases (`DATA_*` permissions)
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/v1/projects/:pid/databases` | list |
+| POST | `/v1/projects/:pid/databases` | `{name,engine,version,storageMb,cpu,memoryMb,region?,nodeId?}` |
+| GET | `/v1/databases/:id` | detail |
+| GET | `/v1/databases/:id/credentials` | reveal `{username,password,host,port,connectionString}` (audited) |
+| POST | `/v1/databases/:id/{stop\|start\|backup}` | lifecycle |
+| DELETE | `/v1/databases/:id` | remove |
+
+### Object storage (`STORAGE_*`)
+`GET/POST /v1/projects/:pid/buckets`, `GET /v1/buckets/:id`,
+`GET /v1/buckets/:id/credentials` (→ `{endpoint,region,accessKey,secretKey}`),
+`DELETE /v1/buckets/:id`.
+
+### Serverless functions (`FUNCTION_*`)
+`GET/POST /v1/projects/:pid/functions`, `GET /v1/functions/:id`,
+`POST /v1/functions/:id/invoke` (`{payload}` → `{commandId}`),
+`GET /v1/functions/:id/invocations`, `DELETE /v1/functions/:id`.
+
+### CI runner pools (`RUNNER_*`)
+`GET/POST /v1/workspaces/:wid/runner-pools`, `GET /v1/runner-pools/:id`,
+`GET /v1/runner-pools/:id/runners`, `DELETE /v1/runner-pools/:id`.
+
+### Autoscaling (`SCALING_*`)
+`GET /v1/apps/:id/scaling`, `PUT /v1/apps/:id/scaling`
+(`{enabled,minReplicas,maxReplicas,metric,targetValue,cooldownSeconds}`).
+
+### Regions
+`GET /v1/regions` (catalog + node counts), `POST /v1/admin/regions` (platform admin).
+
+### Metrics (`METRICS_VIEW`)
+- `POST /v1/agent/metrics` — **agent-authed** ingest of a `MetricBatch`
+  (`{nodeId?, points:[{scope,targetId,kind,value,instance?,timestamp}]}`),
+  upserted into `stepSeconds` buckets.
+- `GET /v1/metrics?scope=&targetId=&kinds=&windowSeconds=&stepSeconds=` →
+  `{series:[{kind,points:[{t,v}]}]}`.
+- **SSE** live stream on channel `metrics:<scope>:<targetId>` (event `metric`).
+
+The 12 new signed node-command types powering these:
+`PROVISION_DATABASE`, `STOP_DATABASE`, `REMOVE_DATABASE`, `BACKUP_DATABASE`,
+`PROVISION_STORAGE`, `REMOVE_STORAGE`, `DEPLOY_FUNCTION`, `INVOKE_FUNCTION`,
+`REMOVE_FUNCTION`, `REGISTER_RUNNER`, `DEREGISTER_RUNNER`, `SCALE_APP`.
