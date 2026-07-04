@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, Rocket, X } from 'lucide-react';
+import { Menu, Rocket, Search, X } from 'lucide-react';
 import { useSession } from '@/lib/session';
 import { SidebarNav } from './sidebar';
 import { UserMenu } from './user-menu';
+import { Breadcrumbs } from './breadcrumbs';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Wordmark } from '@/components/logo';
+import { CommandPalette, openCommandPalette } from '@/components/command-palette';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,7 +74,25 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <div className="lg:hidden">
             <Wordmark size={22} />
           </div>
+
+          <div className="hidden lg:block">
+            <Breadcrumbs />
+          </div>
+
           <div className="flex flex-1 items-center justify-end gap-2">
+            <button
+              onClick={openCommandPalette}
+              className="group inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface-muted px-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground sm:w-56 sm:justify-between"
+              aria-label="Open command palette"
+            >
+              <span className="flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                <span className="hidden sm:inline">Search…</span>
+              </span>
+              <kbd className="hidden items-center gap-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium sm:inline-flex">
+                ⌘K
+              </kbd>
+            </button>
             <ThemeToggle />
             <UserMenu />
           </div>
@@ -82,6 +102,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-6xl">{children}</div>
         </main>
       </div>
+
+      <CommandPalette />
     </div>
   );
 }

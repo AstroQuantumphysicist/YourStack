@@ -1,13 +1,19 @@
 import {
   Boxes,
+  Database,
+  FunctionSquare,
   GitBranch,
   Globe,
+  HardDrive,
   KeyRound,
   LayoutDashboard,
+  LineChart,
+  Map,
   Rocket,
   Server,
   Settings,
   Shield,
+  Container,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -19,14 +25,59 @@ export interface NavItem {
   adminOnly?: boolean;
 }
 
-export const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/dashboard/apps', label: 'Apps', icon: Boxes },
-  { href: '/dashboard/nodes', label: 'Nodes', icon: Server },
-  { href: '/dashboard/deployments', label: 'Deployments', icon: Rocket },
-  { href: '/dashboard/cicd', label: 'CI/CD', icon: GitBranch },
-  { href: '/dashboard/secrets', label: 'Secrets', icon: KeyRound },
-  { href: '/dashboard/domains', label: 'Domains', icon: Globe },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-  { href: '/dashboard/admin', label: 'Admin', icon: Shield, adminOnly: true },
+export interface NavSection {
+  /** Section heading (omitted for the first, header-less group). */
+  title?: string;
+  items: NavItem[];
+}
+
+export const NAV_SECTIONS: NavSection[] = [
+  {
+    items: [{ href: '/dashboard', label: 'Overview', icon: LayoutDashboard }],
+  },
+  {
+    title: 'Build',
+    items: [
+      { href: '/dashboard/apps', label: 'Apps', icon: Boxes },
+      { href: '/dashboard/functions', label: 'Functions', icon: FunctionSquare },
+    ],
+  },
+  {
+    title: 'Data',
+    items: [
+      { href: '/dashboard/data', label: 'Databases', icon: Database },
+      { href: '/dashboard/storage', label: 'Storage', icon: HardDrive },
+    ],
+  },
+  {
+    title: 'Infrastructure',
+    items: [
+      { href: '/dashboard/nodes', label: 'Nodes', icon: Server },
+      { href: '/dashboard/regions', label: 'Regions', icon: Map },
+    ],
+  },
+  {
+    title: 'Delivery',
+    items: [
+      { href: '/dashboard/deployments', label: 'Deployments', icon: Rocket },
+      { href: '/dashboard/cicd', label: 'CI/CD', icon: GitBranch },
+      { href: '/dashboard/runners', label: 'Runners', icon: Container },
+      { href: '/dashboard/domains', label: 'Domains', icon: Globe },
+    ],
+  },
+  {
+    title: 'Observe',
+    items: [{ href: '/dashboard/metrics', label: 'Metrics', icon: LineChart }],
+  },
+  {
+    title: 'Workspace',
+    items: [
+      { href: '/dashboard/secrets', label: 'Secrets', icon: KeyRound },
+      { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+      { href: '/dashboard/admin', label: 'Admin', icon: Shield, adminOnly: true },
+    ],
+  },
 ];
+
+/** Flat list of every nav item (used by the command palette + search). */
+export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);

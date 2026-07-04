@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { Boxes, Plus, Server } from 'lucide-react';
 import { useSession } from '@/lib/session';
-import { useWorkspaceApps } from '@/lib/hooks';
+import { useWorkspaceApps, useAutoCreate } from '@/lib/hooks';
 import { PageHeader } from '@/components/page-header';
 import { CreateAppDialog } from '@/components/dashboard/create-app-dialog';
 import { Card } from '@/components/ui/card';
@@ -19,7 +18,7 @@ export default function AppsPage() {
   const { workspace } = useSession();
   const wid = workspace?.id;
   const { data, error, isLoading, mutate } = useWorkspaceApps(wid);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useAutoCreate();
 
   const apps = data?.apps ?? [];
 

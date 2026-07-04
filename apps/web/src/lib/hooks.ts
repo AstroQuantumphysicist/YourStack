@@ -1,12 +1,83 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import type { AppDTO, ProjectDTO } from '@yourstack/shared';
+import type {
+  AppDTO,
+  BucketDTO,
+  DatabaseDTO,
+  FunctionDTO,
+  ProjectDTO,
+} from '@yourstack/shared';
 import { api } from './api';
 
 export interface AppWithProject extends AppDTO {
   projectName: string;
   projectSlug: string;
+}
+
+export type WithProject<T> = T & { projectName: string; projectSlug: string };
+
+/**
+ * Managed resources (databases/buckets/functions) live under projects. This
+ * composes projects + their resources into a single flat list for the
+ * workspace-level index pages, mirroring `useWorkspaceApps`.
+ */
+function makeResourceHook<T>(
+  keyPrefix: string,
+  fetchForProject: (pid: string) => Promise<T[]>,
+) {
+  return (wid: string | null | undefined) =>
+    useSWR(
+      wid ? [keyPrefix, wid] : null,
+      async (): Promise<{ items: WithProject<T>[]; projects: ProjectDTO[] }> => {
+        const { projects } = await api.projects(wid!);
+        const lists = await Promise.all(
+          projects.map(async (p) => {
+            const items = await fetchForProject(p.id);
+            return items.map((item) => ({
+              ...item,
+              projectName: p.name,
+              projectSlug: p.slug,
+            }));
+          }),
+        );
+        return { items: lists.flat(), projects };
+      },
+    );
+}
+
+export const useWorkspaceDatabases = makeResourceHook<DatabaseDTO>(
+  'ws-databases',
+  async (pid) => (await api.databases(pid)).databases,
+);
+
+export const useWorkspaceBuckets = makeResourceHook<BucketDTO>(
+  'ws-buckets',
+  async (pid) => (await api.buckets(pid)).buckets,
+);
+
+export const useWorkspaceFunctions = makeResourceHook<FunctionDTO>(
+  'ws-functions',
+  async (pid) => (await api.functions(pid)).functions,
+);
+
+/**
+ * When a page is opened via the command palette with `?new=1`, auto-open its
+ * create dialog and strip the query param. Avoids `useSearchParams` (which
+ * would force a Suspense boundary at build time).
+ */
+export function useAutoCreate(): [boolean, (v: boolean) => void] {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('new') === '1') {
+      setOpen(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+  return [open, setOpen];
 }
 
 /**

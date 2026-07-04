@@ -2,13 +2,21 @@ import type {
   AppDTO,
   AuditLogDTO,
   ApiTokenDTO,
+  BucketDTO,
+  DatabaseDTO,
   DeploymentDTO,
   DomainDTO,
+  FunctionDTO,
   GitRepositoryDTO,
   MemberDTO,
+  MetricSeries,
   NodeDTO,
   PipelineRunDTO,
   ProjectDTO,
+  RegionDTO,
+  RunnerDTO,
+  RunnerPoolDTO,
+  ScalingPolicyDTO,
   SecretDTO,
   UserDTO,
   WorkspaceDTO,
@@ -232,6 +240,43 @@ export interface AdminNode {
   lastHeartbeatAt: string | null;
 }
 
+/* ----------------------- Managed-resource response shapes ------------------- */
+
+export interface DatabaseCredentials {
+  username: string;
+  password: string;
+  host: string;
+  port: number;
+  connectionString: string;
+}
+
+export interface BucketCredentials {
+  endpoint: string;
+  region: string;
+  accessKey: string;
+  secretKey: string;
+}
+
+export interface FunctionInvocation {
+  id: string;
+  status: string;
+  statusCode: number | null;
+  durationMs: number | null;
+  error: string | null;
+  createdAt: string;
+}
+
+/** Metric scope + kinds mirror @yourstack/shared MetricScope / MetricKind. */
+export type MetricScopeName = 'app' | 'node' | 'database' | 'function';
+
+export interface MetricsQuery {
+  scope: MetricScopeName;
+  targetId: string;
+  kinds?: string[];
+  windowSeconds?: number;
+  stepSeconds?: number;
+}
+
 /* --------------------------------- Client ---------------------------------- */
 
 export const api = {
@@ -386,6 +431,75 @@ export const api = {
     request<{ disabled: boolean }>(`/admin/nodes/${id}/disable`, {
       method: 'POST',
       body: { disable },
+    }),
+
+  // Databases (v2)
+  databases: (pid: string) =>
+    request<{ databases: DatabaseDTO[] }>(`/projects/${pid}/databases`),
+  createDatabase: (pid: string, body: Record<string, unknown>) =>
+    request<{ database: DatabaseDTO }>(`/projects/${pid}/databases`, { method: 'POST', body }),
+  database: (id: string) => request<{ database: DatabaseDTO }>(`/databases/${id}`),
+  databaseCredentials: (id: string) =>
+    request<{ credentials: DatabaseCredentials }>(`/databases/${id}/credentials`),
+  backupDatabase: (id: string) =>
+    request<{ commandId: string }>(`/databases/${id}/backup`, { method: 'POST' }),
+  stopDatabase: (id: string) =>
+    request<{ commandId: string }>(`/databases/${id}/stop`, { method: 'POST' }),
+  startDatabase: (id: string) =>
+    request<{ commandId: string }>(`/databases/${id}/start`, { method: 'POST' }),
+  deleteDatabase: (id: string) => request<void>(`/databases/${id}`, { method: 'DELETE' }),
+
+  // Storage / buckets (v2)
+  buckets: (pid: string) => request<{ buckets: BucketDTO[] }>(`/projects/${pid}/buckets`),
+  createBucket: (pid: string, body: Record<string, unknown>) =>
+    request<{ bucket: BucketDTO }>(`/projects/${pid}/buckets`, { method: 'POST', body }),
+  bucket: (id: string) => request<{ bucket: BucketDTO }>(`/buckets/${id}`),
+  bucketCredentials: (id: string) =>
+    request<{ credentials: BucketCredentials }>(`/buckets/${id}/credentials`),
+  deleteBucket: (id: string) => request<void>(`/buckets/${id}`, { method: 'DELETE' }),
+
+  // Functions (v2)
+  functions: (pid: string) => request<{ functions: FunctionDTO[] }>(`/projects/${pid}/functions`),
+  createFunction: (pid: string, body: Record<string, unknown>) =>
+    request<{ function: FunctionDTO }>(`/projects/${pid}/functions`, { method: 'POST', body }),
+  functionResource: (id: string) => request<{ function: FunctionDTO }>(`/functions/${id}`),
+  invokeFunction: (id: string, payload: unknown) =>
+    request<{ commandId: string }>(`/functions/${id}/invoke`, {
+      method: 'POST',
+      body: { payload },
+    }),
+  functionInvocations: (id: string) =>
+    request<{ invocations: FunctionInvocation[] }>(`/functions/${id}/invocations`),
+  deleteFunction: (id: string) => request<void>(`/functions/${id}`, { method: 'DELETE' }),
+
+  // Runner pools (v2)
+  runnerPools: (wid: string) =>
+    request<{ pools: RunnerPoolDTO[] }>(`/workspaces/${wid}/runner-pools`),
+  createRunnerPool: (wid: string, body: Record<string, unknown>) =>
+    request<{ pool: RunnerPoolDTO }>(`/workspaces/${wid}/runner-pools`, { method: 'POST', body }),
+  runnerPool: (id: string) => request<{ pool: RunnerPoolDTO }>(`/runner-pools/${id}`),
+  poolRunners: (id: string) => request<{ runners: RunnerDTO[] }>(`/runner-pools/${id}/runners`),
+  deleteRunnerPool: (id: string) => request<void>(`/runner-pools/${id}`, { method: 'DELETE' }),
+
+  // Autoscaling (v2)
+  scaling: (appId: string) =>
+    request<{ policy: ScalingPolicyDTO | null }>(`/apps/${appId}/scaling`),
+  updateScaling: (appId: string, body: Record<string, unknown>) =>
+    request<{ policy: ScalingPolicyDTO }>(`/apps/${appId}/scaling`, { method: 'PUT', body }),
+
+  // Regions (v2)
+  regions: () => request<{ regions: RegionDTO[] }>('/regions'),
+
+  // Metrics (v2)
+  metrics: (q: MetricsQuery) =>
+    request<{ series: MetricSeries[] }>('/metrics', {
+      query: {
+        scope: q.scope,
+        targetId: q.targetId,
+        kinds: q.kinds?.join(','),
+        windowSeconds: q.windowSeconds,
+        stepSeconds: q.stepSeconds,
+      },
     }),
 };
 

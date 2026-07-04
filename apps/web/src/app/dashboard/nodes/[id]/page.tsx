@@ -29,6 +29,7 @@ import { Sparkline } from '@/components/ui/sparkline';
 import { UsageBar } from '@/components/dashboard/usage-bar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/states';
+import { MetricsPanel } from '@/components/metrics/metrics-panel';
 import { formatMb, timeAgo } from '@/lib/format';
 
 export default function NodeDetailPage() {
@@ -204,6 +205,17 @@ export default function NodeDetailPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-primary" /> Live worker load
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MetricsPanel scope="node" targetId={nodeId} height={160} />
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

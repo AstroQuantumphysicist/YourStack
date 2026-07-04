@@ -65,6 +65,14 @@ export function useSSE(channel: string | null | undefined, options: UseSSEOption
       'node.heartbeat',
       'node.status',
       'command.update',
+      // v2 managed-resource + metrics events
+      'metric',
+      'database.status',
+      'bucket.status',
+      'function.status',
+      'function.invocation',
+      'runner.status',
+      'scaling.update',
     ];
     const listeners: Array<[string, (e: MessageEvent) => void]> = [];
     for (const name of named) {

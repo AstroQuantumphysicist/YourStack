@@ -7,9 +7,11 @@ import useSWR from 'swr';
 import {
   ArrowLeft,
   FileText,
+  Gauge,
   Globe,
   KeyRound,
   LayoutDashboard,
+  LineChart,
   Play,
   RotateCw,
   Rocket,
@@ -33,9 +35,13 @@ import { LogsTab } from '@/components/dashboard/app/logs-tab';
 import { EnvTab } from '@/components/dashboard/app/env-tab';
 import { DomainsTab } from '@/components/dashboard/app/domains-tab';
 import { SettingsTab } from '@/components/dashboard/app/settings-tab';
+import { ScaleTab } from '@/components/dashboard/app/scale-tab';
+import { MetricsPanel } from '@/components/metrics/metrics-panel';
 
 const TABS = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { value: 'metrics', label: 'Metrics', icon: LineChart },
+  { value: 'scale', label: 'Scale', icon: Gauge },
   { value: 'deployments', label: 'Deployments', icon: Rocket },
   { value: 'logs', label: 'Logs', icon: FileText },
   { value: 'env', label: 'Env vars', icon: KeyRound },
@@ -159,6 +165,10 @@ export default function AppDetailPage() {
           <Skeleton className="h-64 w-full rounded-2xl" />
         ) : tab === 'overview' ? (
           <OverviewTab app={app} />
+        ) : tab === 'metrics' ? (
+          <MetricsPanel scope="app" targetId={app.id} />
+        ) : tab === 'scale' ? (
+          <ScaleTab app={app} />
         ) : tab === 'deployments' ? (
           <DeploymentsTab app={app} onChange={() => mutate()} />
         ) : tab === 'logs' ? (

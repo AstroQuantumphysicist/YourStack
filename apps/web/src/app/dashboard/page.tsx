@@ -5,21 +5,29 @@ import useSWR from 'swr';
 import {
   Activity,
   Boxes,
-  CheckCircle2,
+  Container,
+  Cpu,
+  Database,
+  FunctionSquare,
+  HardDrive,
   Rocket,
   Server,
-  Signal,
   TrendingUp,
 } from 'lucide-react';
-import type { AuditLogDTO, WorkspaceStatsDTO } from '@yourstack/shared';
+import type { AuditLogDTO, NodeDTO, WorkspaceStatsDTO } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
+import { useSSE } from '@/lib/use-sse';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { ActivityFeed } from '@/components/dashboard/activity-feed';
+import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/states';
+import { formatMb } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 export default function OverviewPage() {
   const { workspace } = useSession();
@@ -27,6 +35,13 @@ export default function OverviewPage() {
 
   const stats = useSWR<{ stats: WorkspaceStatsDTO }>(wid ? `/workspaces/${wid}/stats` : null);
   const audit = useSWR<{ logs: AuditLogDTO[] }>(wid ? `/workspaces/${wid}/audit?limit=12` : null);
+  const nodes = useSWR<{ nodes: NodeDTO[] }>(wid ? `/workspaces/${wid}/nodes` : null);
+
+  useSSE(wid ? `workspace:${wid}` : null, {
+    onEvent: (msg) => {
+      if (msg.type === 'node.heartbeat' || msg.type === 'node.status') nodes.mutate();
+    },
+  });
 
   const s = stats.data?.stats;
   const loading = stats.isLoading;
@@ -35,9 +50,9 @@ export default function OverviewPage() {
     <div className="space-y-6">
       <PageHeader
         title={workspace ? workspace.name : 'Overview'}
-        description="A live snapshot of your workspace — capacity, apps, and recent activity."
+        description="A live snapshot of your workspace — capacity, managed resources, and worker load."
         actions={
-          <Link href="/dashboard/apps">
+          <Link href="/dashboard/apps?new=1">
             <Button>
               <Boxes className="h-4 w-4" /> New app
             </Button>
@@ -45,50 +60,42 @@ export default function OverviewPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <StatCard label="Apps" value={s?.apps ?? 0} icon={Boxes} loading={loading} />
+      <OnboardingChecklist stats={s} />
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatCard label="Apps" value={s?.apps ?? 0} icon={Boxes} loading={loading} hint={s ? `${s.runningApps} running` : undefined} />
         <StatCard
-          label="Running apps"
-          value={s?.runningApps ?? 0}
-          icon={CheckCircle2}
+          label="Nodes"
+          value={s?.nodes ?? 0}
+          icon={Server}
           accent="success"
           loading={loading}
+          hint={s ? `${s.onlineNodes} online` : undefined}
         />
-        <StatCard label="Nodes" value={s?.nodes ?? 0} icon={Server} loading={loading} />
+        <StatCard label="Deployments" value={s?.deployments ?? 0} icon={Rocket} accent="info" loading={loading} />
         <StatCard
-          label="Online nodes"
-          value={s?.onlineNodes ?? 0}
-          icon={Signal}
-          accent="success"
-          loading={loading}
-          hint={s ? `${s.onlineNodes} of ${s.nodes} reachable` : undefined}
-        />
-        <StatCard
-          label="Deployments"
-          value={s?.deployments ?? 0}
-          icon={Rocket}
-          accent="info"
-          loading={loading}
-        />
-        <StatCard
-          label="Deployments today"
+          label="Today"
           value={s?.deploymentsToday ?? 0}
           icon={TrendingUp}
           accent="primary"
           loading={loading}
+          hint="deployments"
         />
+        <StatCard label="Databases" value={s?.databases ?? 0} icon={Database} accent="info" loading={loading} />
+        <StatCard label="Buckets" value={s?.buckets ?? 0} icon={HardDrive} accent="primary" loading={loading} />
+        <StatCard label="Functions" value={s?.functions ?? 0} icon={FunctionSquare} accent="success" loading={loading} />
+        <StatCard label="Runners" value={s?.runners ?? 0} icon={Container} accent="warning" loading={loading} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
+        <WorkerLoad nodes={nodes.data?.nodes} loading={nodes.isLoading} error={!!nodes.error} onRetry={() => nodes.mutate()} />
+
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary" /> Recent activity
             </CardTitle>
-            <Link
-              href="/dashboard/settings"
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
+            <Link href="/dashboard/settings" className="text-xs text-muted-foreground hover:text-foreground">
               View audit log
             </Link>
           </CardHeader>
@@ -102,69 +109,90 @@ export default function OverviewPage() {
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Signal className="h-4 w-4 text-primary" /> Health
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <HealthRow
-              label="Node fleet"
-              ok={(s?.onlineNodes ?? 0) === (s?.nodes ?? 0) && (s?.nodes ?? 0) > 0}
-              detail={s ? `${s.onlineNodes}/${s.nodes} online` : '—'}
-              empty={(s?.nodes ?? 0) === 0}
-              emptyText="No nodes joined"
-            />
-            <HealthRow
-              label="Applications"
-              ok={(s?.runningApps ?? 0) > 0}
-              detail={s ? `${s.runningApps}/${s.apps} running` : '—'}
-              empty={(s?.apps ?? 0) === 0}
-              emptyText="No apps yet"
-            />
-            <div className="rounded-xl border border-border bg-surface-muted/50 p-3">
-              <p className="text-xs text-muted-foreground">
-                Get started by{' '}
-                <Link href="/dashboard/nodes" className="text-primary hover:underline">
-                  joining a node
-                </Link>{' '}
-                and{' '}
-                <Link href="/dashboard/apps" className="text-primary hover:underline">
-                  creating an app
-                </Link>
-                .
-              </p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
 }
 
-function HealthRow({
-  label,
-  ok,
-  detail,
-  empty,
-  emptyText,
+function WorkerLoad({
+  nodes,
+  loading,
+  error,
+  onRetry,
 }: {
-  label: string;
-  ok: boolean;
-  detail: string;
-  empty?: boolean;
-  emptyText?: string;
+  nodes: NodeDTO[] | undefined;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
 }) {
-  const color = empty ? 'bg-muted-foreground/50' : ok ? 'bg-success' : 'bg-warning';
+  const top = (nodes ?? [])
+    .slice()
+    .sort((a, b) => (b.cpuUsagePercent ?? 0) - (a.cpuUsagePercent ?? 0))
+    .slice(0, 5);
+
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2.5">
-        <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
-        <span className="text-sm text-foreground">{label}</span>
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2">
+          <Cpu className="h-4 w-4 text-primary" /> Worker load
+        </CardTitle>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-success" /> Live
+        </span>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error ? (
+          <ErrorState message="Could not load nodes." onRetry={onRetry} />
+        ) : loading ? (
+          <SkeletonRows rows={3} />
+        ) : top.length === 0 ? (
+          <div className="py-4 text-center text-sm text-muted-foreground">
+            <p>No nodes joined yet.</p>
+            <Link href="/dashboard/nodes" className="mt-1 inline-block text-primary hover:underline">
+              Join a node
+            </Link>
+          </div>
+        ) : (
+          top.map((n) => {
+            const cpu = Math.round(n.cpuUsagePercent ?? 0);
+            const memPct =
+              n.memoryTotalMb && n.memoryUsedMb != null
+                ? Math.round((n.memoryUsedMb / n.memoryTotalMb) * 100)
+                : 0;
+            return (
+              <Link
+                key={n.id}
+                href={`/dashboard/nodes/${n.id}`}
+                className="block rounded-xl border border-border p-3 transition-colors hover:border-primary/40"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="truncate text-sm font-medium text-foreground">{n.name}</span>
+                  <Badge variant={n.status === 'online' ? 'success' : 'default'} className="shrink-0">
+                    {n.status}
+                  </Badge>
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  <LoadBar label="CPU" pct={cpu} detail={`${cpu}%`} />
+                  <LoadBar label="RAM" pct={memPct} detail={formatMb(n.memoryUsedMb)} />
+                </div>
+              </Link>
+            );
+          })
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoadBar({ label, pct, detail }: { label: string; pct: number; detail: string }) {
+  const color = pct >= 90 ? 'bg-danger' : pct >= 70 ? 'bg-warning' : 'bg-primary';
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-8 shrink-0 text-[11px] text-muted-foreground">{label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${Math.min(100, pct)}%` }} />
       </div>
-      <span className="text-xs text-muted-foreground">{empty ? emptyText : detail}</span>
+      <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{detail}</span>
     </div>
   );
 }

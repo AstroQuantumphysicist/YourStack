@@ -1,9 +1,13 @@
 import {
   AppStatus,
+  BucketStatus,
+  DatabaseStatus,
   DeploymentStatus,
   DomainStatus,
+  FunctionStatus,
   NodeStatus,
   PipelineRunStatus,
+  RunnerStatus,
 } from '@yourstack/shared';
 import { Badge, type BadgeProps } from './badge';
 import { cn } from '@/lib/utils';
@@ -53,15 +57,47 @@ const domainMap: Record<string, Variant> = {
   [DomainStatus.FAILED]: 'danger',
 };
 
+const databaseMap: Record<string, Variant> = {
+  [DatabaseStatus.RUNNING]: 'success',
+  [DatabaseStatus.PROVISIONING]: 'info',
+  [DatabaseStatus.BACKING_UP]: 'info',
+  [DatabaseStatus.STOPPED]: 'default',
+  [DatabaseStatus.FAILED]: 'danger',
+};
+
+const bucketMap: Record<string, Variant> = {
+  [BucketStatus.ACTIVE]: 'success',
+  [BucketStatus.PROVISIONING]: 'info',
+  [BucketStatus.FAILED]: 'danger',
+};
+
+const functionMap: Record<string, Variant> = {
+  [FunctionStatus.ACTIVE]: 'success',
+  [FunctionStatus.DEPLOYING]: 'info',
+  [FunctionStatus.IDLE]: 'default',
+  [FunctionStatus.FAILED]: 'danger',
+};
+
+const runnerMap: Record<string, Variant> = {
+  [RunnerStatus.IDLE]: 'success',
+  [RunnerStatus.BUSY]: 'info',
+  [RunnerStatus.REGISTERING]: 'info',
+  [RunnerStatus.OFFLINE]: 'default',
+};
+
 const kinds = {
   app: appMap,
   node: nodeMap,
   deployment: deployMap,
   pipeline: pipelineMap,
   domain: domainMap,
+  database: databaseMap,
+  bucket: bucketMap,
+  function: functionMap,
+  runner: runnerMap,
 } as const;
 
-const activeStates = new Set([
+const activeStates = new Set<string>([
   AppStatus.BUILDING,
   AppStatus.DEPLOYING,
   DeploymentStatus.BUILDING,
@@ -69,6 +105,12 @@ const activeStates = new Set([
   DeploymentStatus.QUEUED,
   PipelineRunStatus.RUNNING,
   DomainStatus.VERIFYING,
+  DatabaseStatus.PROVISIONING,
+  DatabaseStatus.BACKING_UP,
+  BucketStatus.PROVISIONING,
+  FunctionStatus.DEPLOYING,
+  RunnerStatus.BUSY,
+  RunnerStatus.REGISTERING,
 ]);
 
 export function StatusBadge({
@@ -81,7 +123,7 @@ export function StatusBadge({
   className?: string;
 }) {
   const variant = kinds[kind][status] ?? 'default';
-  const pulsing = activeStates.has(status as never);
+  const pulsing = activeStates.has(status);
   return (
     <Badge variant={variant} className={cn('capitalize', className)}>
       <span
