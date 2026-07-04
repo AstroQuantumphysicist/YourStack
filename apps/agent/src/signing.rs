@@ -88,7 +88,10 @@ pub fn verify_command(raw: &Value, hex_key: &str) -> Result<(), SignatureError> 
         .map_err(|_| SignatureError::Mismatch)
 }
 
-/// Compute the hex HMAC of an already-canonicalized message (test helper / signer).
+/// Compute the hex HMAC of an already-canonicalized message. This is the signer
+/// side of the protocol; the agent only ever verifies, so it is used by tests and
+/// kept public for symmetry / tooling.
+#[allow(dead_code)]
 pub fn sign_canonical(message: &str, hex_key: &str) -> Result<String, SignatureError> {
     let key = hex::decode(hex_key).map_err(|_| SignatureError::BadKey)?;
     let mut mac = HmacSha256::new_from_slice(&key).map_err(|_| SignatureError::BadKey)?;
@@ -167,5 +170,35 @@ mod tests {
             verify_command(&signed, other_key),
             Err(SignatureError::Mismatch)
         ));
+    }
+
+    /// Cross-language golden vector: this exact key, canonical payload, and
+    /// signature were produced by the LIVE TypeScript control plane (@noderail/
+    /// security `signCommand`) for a real DEPLOY_APP command. If this passes, the
+    /// Rust canonicalization + HMAC is byte-compatible with the signer.
+    #[test]
+    fn verify_accepts_real_control_plane_signature() {
+        let hex_key = "309a3730859566ac50c2338a177ef8341fbc6ebb147626f09e3266433dc1ab89";
+        let signature = "1937dc2666478cde56b016d00eea3a691d5da4ae4015d25c3a0bb9123d309fbd";
+        // The canonical (sorted) signable envelope emitted by the API.
+        let canonical = r#"{"id":"cmr6b26m6000niugpcqje4q8e","issuedAt":"2026-07-04T11:55:07.900Z","nodeId":"cmr6b268t000gej6pow7g70u5","payload":{"spec":{"appId":"cmr6b26d1000qej6psa84r1yv","containerName":"noderail-cmr6b26d1000qej6psa84r1yv","deploymentId":"cmr6b26fl0011ej6py2awlm8o","env":{"API_KEY":"super-secret-value-123","NODE_ENV":"production","PORT":"80"},"healthcheck":{"expectStatus":200,"intervalMs":3000,"path":"/","port":80,"retries":5,"timeoutMs":10000},"imageTag":"noderail/cmr6b26d1000qej6psa84r1yv:1","labels":{"io.noderail.app":"cmr6b26d1000qej6psa84r1yv","io.noderail.deployment":"cmr6b26fl0011ej6py2awlm8o","io.noderail.managed":"true","io.noderail.version":"1"},"networkName":"noderail_cmr6b26d1000qej6psa84r1yv","ports":[{"containerPort":80,"protocol":"tcp"}],"resources":{"cpu":0.5,"memoryMb":512},"source":{"image":"traefik/whoami:latest","kind":"image"},"strategy":"basic_replace"},"type":"DEPLOY_APP"},"timeoutMs":900000}"#;
+
+        // Re-canonicalizing the already-sorted JSON must be a no-op (idempotent).
+        let parsed: Value = serde_json::from_str(canonical).unwrap();
+        assert_eq!(canonical_json(&parsed), canonical);
+
+        // Build the wire envelope (payload order scrambled by parse is fine — verify
+        // re-canonicalizes) and attach the real signature.
+        let mut envelope = parsed;
+        envelope
+            .as_object_mut()
+            .unwrap()
+            .insert("signature".into(), json!(signature));
+
+        verify_command(&envelope, hex_key).expect("real control-plane signature must verify");
+
+        // And the wrong key is still rejected.
+        let bad = "0000000000000000000000000000000000000000000000000000000000000000";
+        assert!(verify_command(&envelope, bad).is_err());
     }
 }

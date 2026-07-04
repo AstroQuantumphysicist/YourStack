@@ -6,6 +6,11 @@
 //! JSON produced here validates on the API. Do not rename fields without changing
 //! the shared package in lockstep.
 
+// These types mirror the fixed control-plane wire contract. Some fields and enum
+// variants are part of the protocol for round-tripping/forward-compat and are not
+// all read by the agent today, so dead-code analysis is intentionally relaxed.
+#![allow(dead_code)]
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};

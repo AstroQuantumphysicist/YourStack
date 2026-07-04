@@ -57,10 +57,10 @@ export function renderTable<T>(rows: T[], columns: Column<T>[]): string {
   return [headerLine, ...bodyLines].join('\n');
 }
 
-// Strip ANSI escape codes to measure the printed width of a cell. Built from a
-// string so the ESC (U+001B) control char isn't a literal in source.
-const ANSI = new RegExp('\\u001b\\[[0-9;]*m', 'g'); // eslint-disable-line-placeholder
-const _ANSI_UNUSED = /\[[0-9;]*m/g;
+// Strip ANSI escape codes to measure the printed width of a cell. The ESC
+// (U+001B) control char is intentional here.
+// eslint-disable-next-line no-control-regex
+const ANSI = /\[[0-9;]*m/g;
 function visibleLength(text: string): number {
   return text.replace(ANSI, '').length;
 }
