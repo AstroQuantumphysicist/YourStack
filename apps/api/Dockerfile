@@ -46,11 +46,29 @@ COPY . .
 RUN pnpm --filter @yourstack/db generate \
  && pnpm --filter @yourstack/api build
 
+# --- agent-build: compile the Rust node agent as a static musl binary ----------
+# Bundled into the runtime image so the control plane can serve it from
+# /agent/download/linux/x86_64 (the `curl | sh` node installer fetches it here).
+# Static musl => runs on any glibc/musl Linux server without a runtime dependency.
+FROM rust:1-slim-bookworm AS agent-build
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends musl-tools musl-dev pkg-config perl make ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && rustup target add x86_64-unknown-linux-musl
+WORKDIR /agent
+COPY apps/agent/Cargo.toml apps/agent/Cargo.lock ./
+COPY apps/agent/src ./src
+ENV CC_x86_64_unknown_linux_musl=musl-gcc
+RUN cargo build --release --target x86_64-unknown-linux-musl \
+ && strip target/x86_64-unknown-linux-musl/release/yourstack-agent || true
+
 # --- runtime -------------------------------------------------------------------
 FROM base AS runtime
 ENV NODE_ENV=production
 # Copy the fully-resolved workspace (dist + node_modules + prisma schema/migrations).
 COPY --from=build /app /app
+# Bundle the prebuilt Linux agent binary served at /agent/download/linux/x86_64.
+COPY --from=agent-build /agent/target/x86_64-unknown-linux-musl/release/yourstack-agent /app/agent-dist/yourstack-agent-linux-x86_64
 WORKDIR /app/apps/api
 EXPOSE 4000
 # Healthcheck hits the Fastify /health route (Railway/compose also use it).

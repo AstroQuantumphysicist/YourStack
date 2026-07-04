@@ -54,6 +54,14 @@ case "${RUNTIME}" in
   *) err "YOURSTACK_RUNTIME must be 'docker' or 'podman' (got '${RUNTIME}')"; exit 1 ;;
 esac
 
+# Where to fetch the agent binary. By default the control plane serves a matching
+# prebuilt binary at /agent/download/<os>/<arch>; override for air-gapped hosts.
+if [ -z "${YOURSTACK_BINARY_URL:-}" ] && [ -n "${YOURSTACK_API_URL:-}" ]; then
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  YOURSTACK_BINARY_URL="${YOURSTACK_API_URL%/}/agent/download/${os}/${arch}"
+fi
+
 # ---- 1. system user ---------------------------------------------------------
 if id "${AGENT_USER}" >/dev/null 2>&1; then
   log "user ${AGENT_USER} already exists"

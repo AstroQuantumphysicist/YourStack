@@ -8,6 +8,7 @@ import errorHandlerPlugin from './plugins/errorHandler.js';
 import openapiPlugin from './routes/openapi.js';
 import healthRoutes from './routes/health.js';
 import metricsRoutes from './routes/metrics.js';
+import agentDistRoutes from './routes/agent-dist.js';
 import authRoutes from './routes/auth.js';
 import workspaceRoutes from './routes/workspaces.js';
 import projectRoutes from './routes/projects.js';
@@ -86,6 +87,8 @@ export async function buildServer(ctx = createContext()): Promise<BuiltServer> {
   // Unversioned operational endpoints.
   await app.register(healthRoutes);
   await app.register(metricsRoutes);
+  // Public agent installer + binary distribution (unversioned, no auth).
+  await app.register(agentDistRoutes);
 
   // Versioned API surface.
   const v1 = async (instance: FastifyInstance) => {

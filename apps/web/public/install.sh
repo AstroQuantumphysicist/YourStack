@@ -53,9 +53,22 @@ fi
 
 log "Running agent installer..."
 # The agent installer registers this machine using the one-time join token and
-# starts the agent service (heartbeats + command polling).
-YOURSTACK_API_URL="$YOURSTACK_API_URL" \
-YOURSTACK_JOIN_TOKEN="$YOURSTACK_JOIN_TOKEN" \
-  sh "$tmp"
+# starts the agent service (heartbeats + command polling). It needs root to
+# create the service user and install the systemd unit, so elevate if needed.
+YOURSTACK_RUNTIME="${YOURSTACK_RUNTIME:-}"
+if [ "$(id -u)" -eq 0 ]; then
+  YOURSTACK_API_URL="$YOURSTACK_API_URL" \
+  YOURSTACK_JOIN_TOKEN="$YOURSTACK_JOIN_TOKEN" \
+  YOURSTACK_RUNTIME="$YOURSTACK_RUNTIME" \
+    sh "$tmp"
+elif command -v sudo >/dev/null 2>&1; then
+  log "Elevating with sudo to install the system service..."
+  sudo YOURSTACK_API_URL="$YOURSTACK_API_URL" \
+       YOURSTACK_JOIN_TOKEN="$YOURSTACK_JOIN_TOKEN" \
+       YOURSTACK_RUNTIME="$YOURSTACK_RUNTIME" \
+       sh "$tmp"
+else
+  die "root is required to install the service. Re-run as root, or install sudo."
+fi
 
 log "Done. This node should appear in your workspace shortly."

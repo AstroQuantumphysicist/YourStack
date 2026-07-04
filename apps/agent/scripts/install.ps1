@@ -53,6 +53,12 @@ if (-not $NodeName)  { $NodeName = $env:COMPUTERNAME }
 if (-not $Runtime)   { $Runtime = 'docker' }
 if ($Runtime -notin @('docker','podman')) { Die "runtime must be 'docker' or 'podman' (got '$Runtime')" }
 
+# Default the binary download URL to the control plane, matching this host's arch.
+if (-not $BinaryUrl -and $ApiUrl) {
+  $arch = ($env:PROCESSOR_ARCHITECTURE).ToLower()  # amd64 / arm64
+  $BinaryUrl = "$($ApiUrl.TrimEnd('/'))/agent/download/windows/$arch"
+}
+
 $ServiceName = 'yourstack-agent'
 $InstallDir  = Join-Path $env:ProgramFiles 'YourStack'
 $BinPath     = Join-Path $InstallDir 'yourstack-agent.exe'
