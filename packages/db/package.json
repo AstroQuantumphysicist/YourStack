@@ -19,7 +19,7 @@
     "studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
     "lint": "eslint src --max-warnings 0",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "clean": "rimraf dist .turbo"
   },
   "prisma": {
