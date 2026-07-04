@@ -5,7 +5,6 @@ import {
   commandResultSchema,
   logBatchSchema,
   HEARTBEAT_INTERVAL_MS,
-  NODE_OFFLINE_AFTER_MS,
   SSE_CHANNELS,
   type NodeCommand as NodeCommandContract,
 } from '@noderail/shared';
@@ -242,6 +241,3 @@ async function claimCommands(
     signature: c.signature,
   }));
 }
-
-// keep constant referenced for liveness docs
-void NODE_OFFLINE_AFTER_MS;

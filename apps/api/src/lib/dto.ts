@@ -150,6 +150,7 @@ export function toDeploymentDTO(d: Deployment): DeploymentDTO {
     commitMessage: d.commitMessage,
     reason: d.reason,
     healthy: d.healthy,
+    hostPort: d.hostPort,
     triggeredBy: d.triggeredBy,
     startedAt: iso(d.startedAt),
     finishedAt: iso(d.finishedAt),

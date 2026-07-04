@@ -130,7 +130,6 @@ async function closePipelineRun(
   });
   if (!run) return;
   const now = new Date();
-  const finalStage = success ? 'succeeded' : 'failed';
   for (const name of ['deploy', 'healthcheck', 'finalize']) {
     const stage = run.stages.find((s) => s.name === name);
     if (!stage) continue;
@@ -148,7 +147,6 @@ async function closePipelineRun(
     where: { id: run.id },
     data: { status: success ? 'succeeded' : 'failed', finishedAt: now },
   });
-  void finalStage;
 }
 
 async function publishDeployment(

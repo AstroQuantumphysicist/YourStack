@@ -149,12 +149,11 @@ async function pickWorkspace(workspaces: WorkspaceDTO[]): Promise<WorkspaceDTO> 
     info(`Workspace: ${pc.cyan(workspaces[0]!.slug)}`);
     return workspaces[0]!;
   }
-  const id = ensure(
-    await p.select({
-      message: 'Select a workspace',
-      options: workspaces.map((w) => ({ value: w.id, label: w.slug, hint: w.role })),
-    }),
-  );
+  const selection = await p.select({
+    message: 'Select a workspace',
+    options: workspaces.map((w) => ({ value: w.id, label: w.slug, hint: w.role })),
+  });
+  const id = ensure(selection);
   return workspaces.find((w) => w.id === id)!;
 }
 
@@ -164,15 +163,14 @@ async function pickOrCreateProject(
   projects: ProjectDTO[],
 ): Promise<ProjectDTO> {
   const CREATE = '__create__';
-  const choice = ensure(
-    await p.select({
-      message: 'Select a project',
-      options: [
-        ...projects.map((pr) => ({ value: pr.id, label: pr.name, hint: `${pr.appCount} apps` })),
-        { value: CREATE, label: pc.green('+ Create a new project') },
-      ],
-    }),
-  );
+  const selection = await p.select({
+    message: 'Select a project',
+    options: [
+      ...projects.map((pr) => ({ value: pr.id, label: pr.name, hint: `${pr.appCount} apps` })),
+      { value: CREATE, label: pc.green('+ Create a new project') },
+    ],
+  });
+  const choice = ensure(selection);
   if (choice !== CREATE) return projects.find((pr) => pr.id === choice)!;
 
   const name = ensure(

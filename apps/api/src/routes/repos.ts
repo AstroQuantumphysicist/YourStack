@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { connectRepoSchema, Permission } from '@noderail/shared';
-import { AuditAction, randomHex } from '@noderail/security';
+import { AuditAction } from '@noderail/security';
 import { requirePermission } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
@@ -92,6 +92,3 @@ export default async function repoRoutes(app: FastifyInstance) {
     return { repo: toRepoDTO(repo) };
   });
 }
-
-// keep import referenced (used when generating verify tokens elsewhere)
-void randomHex;

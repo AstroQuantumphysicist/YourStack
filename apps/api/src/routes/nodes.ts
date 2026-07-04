@@ -5,7 +5,6 @@ import {
   nodeLabelSchema,
   Permission,
   JOIN_TOKEN_TTL_MS,
-  HEARTBEAT_INTERVAL_MS,
 } from '@noderail/shared';
 import { generateJoinToken, AuditAction } from '@noderail/security';
 import { requirePermission } from '../lib/rbac.js';
@@ -183,6 +182,3 @@ export default async function nodeRoutes(app: FastifyInstance) {
     reply.status(204).send();
   });
 }
-
-// Referenced by docs; keep exported constant in scope.
-void HEARTBEAT_INTERVAL_MS;

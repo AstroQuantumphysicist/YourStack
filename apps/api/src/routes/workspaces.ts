@@ -9,7 +9,7 @@ import {
 } from '@noderail/shared';
 import { AuditAction } from '@noderail/security';
 import { requireUser } from '../lib/auth.js';
-import { assertPermission, requirePermission, resolveMembership } from '../lib/rbac.js';
+import { requirePermission, resolveMembership } from '../lib/rbac.js';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
 import { slugify, todayKey } from '../lib/util.js';
@@ -196,6 +196,3 @@ async function uniqueSlug(prisma: import('@noderail/db').PrismaClient, base: str
   }
   return slug;
 }
-
-// Silence unused import in some builds.
-void assertPermission;

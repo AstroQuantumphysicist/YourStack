@@ -75,7 +75,7 @@ export async function processDeploy(ctx: WorkerContext, job: Job): Promise<void>
       await appendDeploymentLog(ctx, deployment.id, 'Tests will run on the node during build.');
     });
 
-    let spec = await buildDeploySpec(ctx, { app, deployment, repo: app.gitRepository });
+    const spec = await buildDeploySpec(ctx, { app, deployment, repo: app.gitRepository });
     await runStage(ctx, run.id, stageId('build'), async () => {
       await appendDeploymentLog(
         ctx,

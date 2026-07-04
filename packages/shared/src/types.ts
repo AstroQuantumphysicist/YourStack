@@ -116,6 +116,7 @@ export interface DeploymentDTO {
   commitMessage: string | null;
   reason: string | null;
   healthy: boolean | null;
+  hostPort: number | null;
   triggeredBy: string | null;
   startedAt: string | null;
   finishedAt: string | null;
