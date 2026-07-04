@@ -73,6 +73,21 @@ nodes — every one a typed, signed command the agent runs via the Docker Engine
   latency, network and disk every 15s; the dashboard renders live time-series so
   you can inspect worker load in real time.
 
+### Marketplace, GitHub App, cron & AI (v3)
+
+- **Template marketplace** — one-click deploy of 34+ popular self-hosted apps
+  (WordPress, Ghost, n8n, Grafana, Metabase, Ollama, Meilisearch, Gitea,
+  Vaultwarden, Uptime Kuma, MinIO, Postgres/Redis/Mongo, …). Host *anything*.
+- **GitHub App** — install YourStack into your org or account, then every push to
+  a connected repo **auto-deploys**, with commit **check runs** reported back.
+- **Cron jobs** — schedule any container to run on a cron expression; runs are
+  tracked with exit codes, durations, and history.
+- **MCP server** (`apps/mcp`) — connect any AI agent (Claude Desktop, Cursor,
+  Claude Code, your own) to YourStack via the [Model Context Protocol](https://modelcontextprotocol.io).
+  27 tools let an agent deploy apps, provision databases/storage/functions,
+  browse & deploy the marketplace, schedule cron, and read logs + metrics —
+  all through the same RBAC as the dashboard. See `apps/mcp/README.md`.
+
 The **control plane** (this repo's `api` + `worker` + Postgres + Redis) is itself
 designed to be hosted on a managed platform such as **Railway**. The **data
 plane** is your fleet of nodes.

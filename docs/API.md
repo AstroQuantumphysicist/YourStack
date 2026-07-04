@@ -369,3 +369,32 @@ The 12 new signed node-command types powering these:
 `PROVISION_DATABASE`, `STOP_DATABASE`, `REMOVE_DATABASE`, `BACKUP_DATABASE`,
 `PROVISION_STORAGE`, `REMOVE_STORAGE`, `DEPLOY_FUNCTION`, `INVOKE_FUNCTION`,
 `REMOVE_FUNCTION`, `REGISTER_RUNNER`, `DEREGISTER_RUNNER`, `SCALE_APP`.
+
+---
+
+## GitHub App, Marketplace & Cron (v3)
+
+### GitHub App (install → autodeploy)
+`GET /v1/github/app/install-url?workspaceId=` → `{url}` (open to install the app),
+`GET /v1/github/app/callback` (redirect target), `GET /v1/workspaces/:wid/github/installations`,
+`GET /v1/github/installations/:id/repos`, `DELETE /v1/github/installations/:id`,
+`POST /v1/webhooks/github-app` (app webhook: installation sync + push → autodeploy + check runs).
+Requires `GITHUB_APP_ID/SLUG/CLIENT_ID/CLIENT_SECRET/PRIVATE_KEY/WEBHOOK_SECRET`.
+
+### Template marketplace
+`GET /v1/templates?category=&search=`, `GET /v1/templates/:slug`,
+`POST /v1/templates/deploy` (`{templateSlug,projectId,name?,region?,variables}`) →
+translates a template into a `database` or `app` (arbitrary container image) and provisions it.
+
+### Cron jobs
+`GET/POST /v1/projects/:pid/cron`, `GET/PATCH/DELETE /v1/cron/:id`,
+`POST /v1/cron/:id/run` (trigger now), `GET /v1/cron/:id/runs`. The worker owns the
+repeatable schedule; each fire dispatches a signed `RUN_JOB` node command that runs the
+container to completion and reports exit code + duration back.
+
+## MCP server (AI agents → YourStack)
+
+`apps/mcp` is a Model Context Protocol server (stdio) exposing 27 tools over the REST
+API, authenticated with a personal `ys_…` token via `YOURSTACK_TOKEN` (+ `YOURSTACK_API_URL`).
+Point Claude Desktop / Cursor / Claude Code at `yourstack-mcp` to let an agent deploy and
+operate everything the token's user can. See `apps/mcp/README.md`.
