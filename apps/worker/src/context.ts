@@ -19,6 +19,11 @@ export interface WorkerContext {
     rollback: Queue;
     domain: Queue;
     maintenance: Queue;
+    database: Queue;
+    storage: Queue;
+    fn: Queue;
+    runner: Queue;
+    autoscale: Queue;
   };
 }
 
@@ -38,6 +43,11 @@ export function createContext(): WorkerContext {
     rollback: new Queue(QUEUE_NAMES.ROLLBACK, opts),
     domain: new Queue(QUEUE_NAMES.DOMAIN, opts),
     maintenance: new Queue(QUEUE_NAMES.MAINTENANCE, opts),
+    database: new Queue(QUEUE_NAMES.DATABASE, opts),
+    storage: new Queue(QUEUE_NAMES.STORAGE, opts),
+    fn: new Queue(QUEUE_NAMES.FUNCTION, opts),
+    runner: new Queue(QUEUE_NAMES.RUNNER, opts),
+    autoscale: new Queue(QUEUE_NAMES.AUTOSCALE, opts),
   };
 
   return {

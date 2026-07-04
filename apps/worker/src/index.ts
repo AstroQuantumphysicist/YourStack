@@ -8,6 +8,11 @@ import { processHealthcheck } from './processors/healthcheck.js';
 import { processRollback } from './processors/rollback.js';
 import { processDomain } from './processors/domain.js';
 import { processMaintenance } from './processors/maintenance.js';
+import { processDatabase } from './processors/database.js';
+import { processStorage } from './processors/storage.js';
+import { processFunction } from './processors/function.js';
+import { processRunner } from './processors/runner.js';
+import { processAutoscale } from './processors/autoscale.js';
 
 type Processor = (ctx: WorkerContext, job: Job) => Promise<void>;
 
@@ -38,6 +43,7 @@ async function scheduleMaintenance(ctx: WorkerContext): Promise<void> {
   await add('log_retention', 60 * 60_000);
   await add('cleanup', 60 * 60_000);
   await add('usage_rollup', 24 * 60 * 60_000);
+  await add('metric_rollup', 60 * 60_000);
   logger.info('scheduled repeatable maintenance jobs');
 }
 
@@ -50,6 +56,11 @@ async function main() {
     makeWorker(ctx, QUEUE_NAMES.ROLLBACK, processRollback, 4),
     makeWorker(ctx, QUEUE_NAMES.DOMAIN, processDomain, 4),
     makeWorker(ctx, QUEUE_NAMES.MAINTENANCE, processMaintenance, 2),
+    makeWorker(ctx, QUEUE_NAMES.DATABASE, processDatabase, 4),
+    makeWorker(ctx, QUEUE_NAMES.STORAGE, processStorage, 4),
+    makeWorker(ctx, QUEUE_NAMES.FUNCTION, processFunction, 4),
+    makeWorker(ctx, QUEUE_NAMES.RUNNER, processRunner, 4),
+    makeWorker(ctx, QUEUE_NAMES.AUTOSCALE, processAutoscale, 4),
   ];
 
   await scheduleMaintenance(ctx);

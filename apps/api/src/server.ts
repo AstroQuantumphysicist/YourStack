@@ -24,6 +24,13 @@ import webhookRoutes from './routes/webhooks.js';
 import tokenRoutes from './routes/tokens.js';
 import auditRoutes from './routes/audit.js';
 import adminRoutes from './routes/admin.js';
+import databaseRoutes from './routes/databases.js';
+import storageRoutes from './routes/storage.js';
+import functionRoutes from './routes/functions.js';
+import runnerRoutes from './routes/runners.js';
+import scalingRoutes from './routes/scaling.js';
+import regionRoutes from './routes/regions.js';
+import metricsQueryRoutes from './routes/metrics-query.js';
 
 export interface BuiltServer {
   app: FastifyInstance;
@@ -90,6 +97,14 @@ export async function buildServer(ctx = createContext()): Promise<BuiltServer> {
     await instance.register(tokenRoutes);
     await instance.register(auditRoutes);
     await instance.register(adminRoutes);
+    // Managed resources (v2)
+    await instance.register(databaseRoutes);
+    await instance.register(storageRoutes);
+    await instance.register(functionRoutes);
+    await instance.register(runnerRoutes);
+    await instance.register(scalingRoutes);
+    await instance.register(regionRoutes);
+    await instance.register(metricsQueryRoutes);
   };
   await app.register(v1, { prefix: `/${API_VERSION}` });
 

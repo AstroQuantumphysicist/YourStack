@@ -9,10 +9,12 @@ import {
   type NodeCommand as NodeCommandContract,
 } from '@yourstack/shared';
 import { generateAgentToken, generateCommandKey, hashToken, verifyToken, AuditAction } from '@yourstack/security';
+import { metricBatchSchema } from '@yourstack/shared';
 import { parse } from '../lib/validate.js';
 import { Errors } from '../lib/errors.js';
 import { bearerToken } from '../lib/auth.js';
 import { applyCommandResult } from '../services/command-result.service.js';
+import { ingestMetrics } from '../services/metrics.service.js';
 
 /** Authenticate the agent via its Bearer token; attaches req.node. */
 async function authenticateNode(app: FastifyInstance, req: FastifyRequest): Promise<void> {
@@ -212,6 +214,13 @@ export default async function agentRoutes(app: FastifyInstance) {
         }
       }
       return { ok: true, ingested: body.events.length };
+    });
+
+    // Ingest a batch of resource metrics (cpu/mem/rps/latency/…) sampled by the agent.
+    agent.post('/agent/metrics', async (req) => {
+      const batch = parse(metricBatchSchema, req.body);
+      const ingested = await ingestMetrics(prisma, realtime, { ...batch, nodeId: batch.nodeId ?? req.node!.id });
+      return { ok: true, ingested };
     });
   });
 }

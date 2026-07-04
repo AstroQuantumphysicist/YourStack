@@ -24,6 +24,11 @@ export interface AppContext {
     rollback: Queue;
     domain: Queue;
     maintenance: Queue;
+    database: Queue;
+    storage: Queue;
+    fn: Queue;
+    runner: Queue;
+    autoscale: Queue;
   };
   realtime: RealtimeHub;
   github: GithubClient;
@@ -43,6 +48,11 @@ export function createContext(): AppContext {
     rollback: new Queue(QUEUE_NAMES.ROLLBACK, connection),
     domain: new Queue(QUEUE_NAMES.DOMAIN, connection),
     maintenance: new Queue(QUEUE_NAMES.MAINTENANCE, connection),
+    database: new Queue(QUEUE_NAMES.DATABASE, connection),
+    storage: new Queue(QUEUE_NAMES.STORAGE, connection),
+    fn: new Queue(QUEUE_NAMES.FUNCTION, connection),
+    runner: new Queue(QUEUE_NAMES.RUNNER, connection),
+    autoscale: new Queue(QUEUE_NAMES.AUTOSCALE, connection),
   };
 
   const encryptor = createEncryptor(config.SECRETS_ENCRYPTION_KEY);

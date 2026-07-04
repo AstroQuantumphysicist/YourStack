@@ -34,6 +34,12 @@ export async function applyCommandResult(
     status: result.status,
   });
 
+  // Managed-resource commands (v2) carry their target id in the signed payload.
+  if (RESOURCE_COMMAND_TYPES.has(command.type)) {
+    if (terminal) await applyResourceResult(prisma, realtime, command, result);
+    return;
+  }
+
   if (!command.deploymentId) return;
   const deploymentId = command.deploymentId;
 
@@ -158,4 +164,113 @@ async function publishDeployment(
   const d = await prisma.deployment.findUnique({ where: { id: deploymentId }, select: { appId: true } });
   await realtime.publish(SSE_CHANNELS.deployment(deploymentId), 'deployment.status', { deploymentId, status });
   if (d) await realtime.publish(SSE_CHANNELS.app(d.appId), 'deployment.status', { deploymentId, status });
+}
+
+/* ----------------------- Managed-resource finalization ---------------------- */
+
+const RESOURCE_COMMAND_TYPES = new Set<string>([
+  CommandType.PROVISION_DATABASE,
+  CommandType.STOP_DATABASE,
+  CommandType.REMOVE_DATABASE,
+  CommandType.BACKUP_DATABASE,
+  CommandType.PROVISION_STORAGE,
+  CommandType.REMOVE_STORAGE,
+  CommandType.DEPLOY_FUNCTION,
+  CommandType.INVOKE_FUNCTION,
+  CommandType.REMOVE_FUNCTION,
+  CommandType.REGISTER_RUNNER,
+  CommandType.DEREGISTER_RUNNER,
+  CommandType.SCALE_APP,
+]);
+
+/** Drive the state of a managed resource from an agent's command result. */
+async function applyResourceResult(
+  prisma: PrismaClient,
+  realtime: RealtimeHub,
+  command: NodeCommand,
+  result: ResultInput,
+): Promise<void> {
+  const payload = command.payload as { type: string; spec: Record<string, unknown> };
+  const spec = payload.spec ?? {};
+  const ok = result.status === 'succeeded';
+  const out = result.output ?? {};
+
+  switch (command.type) {
+    case CommandType.PROVISION_DATABASE: {
+      const id = String(spec.databaseId);
+      await prisma.managedDatabase.update({
+        where: { id },
+        data: {
+          status: ok ? 'running' : 'failed',
+          containerId: (out.containerId as string) ?? undefined,
+          port: (out.hostPort as number) ?? undefined,
+        },
+      });
+      await realtime.publish(SSE_CHANNELS.database(id), 'database.status', { databaseId: id, status: ok ? 'running' : 'failed' });
+      break;
+    }
+    case CommandType.STOP_DATABASE:
+    case CommandType.REMOVE_DATABASE: {
+      const id = String(spec.databaseId);
+      if (command.type === CommandType.STOP_DATABASE) {
+        await prisma.managedDatabase.updateMany({ where: { id }, data: { status: ok ? 'stopped' : 'failed' } });
+      }
+      break;
+    }
+    case CommandType.BACKUP_DATABASE: {
+      const id = String(spec.databaseId);
+      await prisma.managedDatabase.updateMany({ where: { id }, data: { lastBackupAt: new Date(), status: 'running' } });
+      break;
+    }
+    case CommandType.PROVISION_STORAGE: {
+      const id = String(spec.bucketId);
+      await prisma.storageBucket.update({
+        where: { id },
+        data: { status: ok ? 'active' : 'failed', endpoint: (out.extra?.['endpoint'] as string) ?? undefined },
+      });
+      await realtime.publish(SSE_CHANNELS.bucket(id), 'bucket.status', { bucketId: id, status: ok ? 'active' : 'failed' });
+      break;
+    }
+    case CommandType.DEPLOY_FUNCTION: {
+      const id = String(spec.functionId);
+      await prisma.serverlessFunction.update({
+        where: { id },
+        data: { status: ok ? 'active' : 'failed', url: (out.extra?.['url'] as string) ?? undefined },
+      });
+      await realtime.publish(SSE_CHANNELS.fn(id), 'function.status', { functionId: id, status: ok ? 'active' : 'failed' });
+      break;
+    }
+    case CommandType.INVOKE_FUNCTION: {
+      const id = String(spec.functionId);
+      await prisma.functionInvocation.create({
+        data: {
+          functionId: id,
+          status: ok ? 'success' : 'error',
+          durationMs: (out.durationMs as number) ?? 0,
+          statusCode: (out.exitCode as number) ?? (ok ? 200 : 500),
+        },
+      });
+      break;
+    }
+    case CommandType.REGISTER_RUNNER:
+    case CommandType.DEREGISTER_RUNNER: {
+      const id = String(spec.runnerId);
+      await prisma.runner.updateMany({
+        where: { id },
+        data: {
+          status: command.type === CommandType.REGISTER_RUNNER ? (ok ? 'idle' : 'offline') : 'offline',
+          lastSeenAt: new Date(),
+        },
+      });
+      break;
+    }
+    case CommandType.SCALE_APP: {
+      const id = String(spec.appId);
+      const replicas = (out.extra?.['replicas'] as number) ?? (spec.replicas as number);
+      if (typeof replicas === 'number') {
+        await prisma.scalingPolicy.updateMany({ where: { appId: id }, data: { currentReplicas: replicas } });
+      }
+      break;
+    }
+  }
 }

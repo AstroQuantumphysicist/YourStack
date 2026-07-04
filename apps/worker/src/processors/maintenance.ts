@@ -20,7 +20,16 @@ export async function processMaintenance(ctx: WorkerContext, job: Job): Promise<
       return cleanup(ctx);
     case 'usage_rollup':
       return usageRollup(ctx);
+    case 'metric_rollup':
+      return metricRollup(ctx);
   }
+}
+
+/** Prune resource metrics older than 7 days to keep the time series bounded. */
+async function metricRollup(ctx: WorkerContext): Promise<void> {
+  const cutoff = new Date(Date.now() - 7 * 86400_000);
+  const { count } = await ctx.prisma.resourceMetric.deleteMany({ where: { bucketTs: { lt: cutoff } } });
+  if (count) logger.info({ count }, 'pruned resource metrics');
 }
 
 /** Transition nodes to degraded/offline when heartbeats stop arriving. */

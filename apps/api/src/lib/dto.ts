@@ -15,6 +15,13 @@ import type {
   PipelineRun,
   PipelineStage,
   Plan,
+  ManagedDatabase,
+  StorageBucket,
+  ServerlessFunction,
+  RunnerPool,
+  Runner,
+  ScalingPolicy,
+  Region,
 } from '@yourstack/db';
 import type {
   AppDTO,
@@ -35,6 +42,13 @@ import type {
   AppFramework,
   DeploymentStrategy,
   SecretScope,
+  DatabaseDTO,
+  BucketDTO,
+  FunctionDTO,
+  RunnerPoolDTO,
+  RunnerDTO,
+  ScalingPolicyDTO,
+  RegionDTO,
 } from '@yourstack/shared';
 import { iso } from './util.js';
 
@@ -256,5 +270,121 @@ export function toPlanDTO(p: Plan): PlanDTO {
     maxApps: p.maxApps,
     maxDeploymentsPerDay: p.maxDeploymentsPerDay,
     logRetentionDays: p.logRetentionDays,
+  };
+}
+
+/* --------------------------- Managed resources (v2) ------------------------- */
+
+export function toDatabaseDTO(d: ManagedDatabase): DatabaseDTO {
+  return {
+    id: d.id,
+    projectId: d.projectId,
+    name: d.name,
+    engine: d.engine,
+    version: d.version,
+    status: d.status,
+    nodeId: d.nodeId,
+    region: d.region,
+    host: d.host,
+    port: d.port,
+    storageMb: d.storageMb,
+    cpu: d.cpu,
+    memoryMb: d.memoryMb,
+    createdAt: d.createdAt.toISOString(),
+  };
+}
+
+export function toBucketDTO(b: StorageBucket): BucketDTO {
+  return {
+    id: b.id,
+    projectId: b.projectId,
+    name: b.name,
+    status: b.status,
+    nodeId: b.nodeId,
+    region: b.region,
+    endpoint: b.endpoint,
+    isPublic: b.isPublic,
+    quotaMb: b.quotaMb,
+    usedMb: b.usedMb,
+    objectCount: b.objectCount,
+    createdAt: b.createdAt.toISOString(),
+  };
+}
+
+export function toFunctionDTO(
+  f: ServerlessFunction & { _count?: { invocations: number } },
+): FunctionDTO {
+  return {
+    id: f.id,
+    projectId: f.projectId,
+    name: f.name,
+    runtime: f.runtime,
+    status: f.status,
+    handler: f.handler,
+    nodeId: f.nodeId,
+    region: f.region,
+    url: f.url,
+    memoryMb: f.memoryMb,
+    timeoutMs: f.timeoutMs,
+    minInstances: f.minInstances,
+    invocations24h: f._count?.invocations ?? 0,
+    createdAt: f.createdAt.toISOString(),
+  };
+}
+
+export function toRunnerPoolDTO(
+  p: RunnerPool & { runners?: Runner[] },
+): RunnerPoolDTO {
+  const runners = p.runners ?? [];
+  return {
+    id: p.id,
+    workspaceId: p.workspaceId,
+    name: p.name,
+    githubScope: p.githubScope,
+    labels: p.labels,
+    minRunners: p.minRunners,
+    maxRunners: p.maxRunners,
+    activeRunners: runners.filter((r) => r.status !== 'offline').length,
+    busyRunners: runners.filter((r) => r.status === 'busy').length,
+    createdAt: p.createdAt.toISOString(),
+  };
+}
+
+export function toRunnerDTO(r: Runner): RunnerDTO {
+  return {
+    id: r.id,
+    poolId: r.poolId,
+    nodeId: r.nodeId,
+    status: r.status,
+    currentJob: r.currentJob,
+    lastSeenAt: iso(r.lastSeenAt),
+    createdAt: r.createdAt.toISOString(),
+  };
+}
+
+export function toScalingPolicyDTO(s: ScalingPolicy): ScalingPolicyDTO {
+  return {
+    id: s.id,
+    appId: s.appId,
+    enabled: s.enabled,
+    minReplicas: s.minReplicas,
+    maxReplicas: s.maxReplicas,
+    metric: s.metric,
+    targetValue: s.targetValue,
+    currentReplicas: s.currentReplicas,
+    cooldownSeconds: s.cooldownSeconds,
+    updatedAt: s.updatedAt.toISOString(),
+  };
+}
+
+export function toRegionDTO(r: Region, nodeCount: number): RegionDTO {
+  return {
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    country: r.country,
+    flag: r.flag,
+    nodeCount,
+    latencyMs: null,
   };
 }

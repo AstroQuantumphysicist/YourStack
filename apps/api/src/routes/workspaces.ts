@@ -70,16 +70,22 @@ export default async function workspaceRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     await requirePermission(prisma, req, id, Permission.WORKSPACE_VIEW);
 
-    const [apps, nodes, onlineNodes, runningApps, deployments, deploymentsToday] = await Promise.all([
-      prisma.app.count({ where: { project: { workspaceId: id }, deletedAt: null } }),
-      prisma.node.count({ where: { workspaceId: id, deletedAt: null } }),
-      prisma.node.count({ where: { workspaceId: id, deletedAt: null, status: 'online' } }),
-      prisma.app.count({ where: { project: { workspaceId: id }, deletedAt: null, status: 'running' } }),
-      prisma.deployment.count({ where: { app: { project: { workspaceId: id } } } }),
-      prisma.usageRecord.findUnique({
-        where: { workspaceId_metric_day: { workspaceId: id, metric: 'deployments', day: todayKey() } },
-      }),
-    ]);
+    const wsProject = { project: { workspaceId: id } };
+    const [apps, nodes, onlineNodes, runningApps, deployments, deploymentsToday, databases, buckets, functions, runners] =
+      await Promise.all([
+        prisma.app.count({ where: { ...wsProject, deletedAt: null } }),
+        prisma.node.count({ where: { workspaceId: id, deletedAt: null } }),
+        prisma.node.count({ where: { workspaceId: id, deletedAt: null, status: 'online' } }),
+        prisma.app.count({ where: { ...wsProject, deletedAt: null, status: 'running' } }),
+        prisma.deployment.count({ where: { app: wsProject } }),
+        prisma.usageRecord.findUnique({
+          where: { workspaceId_metric_day: { workspaceId: id, metric: 'deployments', day: todayKey() } },
+        }),
+        prisma.managedDatabase.count({ where: { ...wsProject, deletedAt: null } }),
+        prisma.storageBucket.count({ where: { ...wsProject, deletedAt: null } }),
+        prisma.serverlessFunction.count({ where: { ...wsProject, deletedAt: null } }),
+        prisma.runner.count({ where: { pool: { workspaceId: id }, status: { not: 'offline' } } }),
+      ]);
 
     return {
       stats: {
@@ -89,6 +95,10 @@ export default async function workspaceRoutes(app: FastifyInstance) {
         runningApps,
         deployments,
         deploymentsToday: deploymentsToday?.quantity ?? 0,
+        databases,
+        buckets,
+        functions,
+        runners,
       },
     };
   });
