@@ -18,7 +18,7 @@ use serde_json::Value;
 
 use crate::protocol::{
     CommandPollResponse, CommandResultBody, HeartbeatRequest, HeartbeatResponse, LogBatch,
-    NodeRegisterRequest, NodeRegisterResponse,
+    MetricBatch, NodeRegisterRequest, NodeRegisterResponse,
 };
 
 /// Long-poll timeout for `GET /agent/commands` (`COMMAND_POLL_TIMEOUT_MS`), plus
@@ -122,6 +122,20 @@ impl ApiClient {
         self.send_with_retry("POST", "/agent/logs", token, Some(batch), REQUEST_TIMEOUT)
             .await
             .map(|_| ())
+    }
+
+    /// Ship a batch of resource/node metric samples (`POST /v1/agent/metrics`).
+    pub async fn post_metrics(&self, batch: &MetricBatch) -> Result<()> {
+        let token = self.bearer()?;
+        self.send_with_retry(
+            "POST",
+            "/agent/metrics",
+            token,
+            Some(batch),
+            REQUEST_TIMEOUT,
+        )
+        .await
+        .map(|_| ())
     }
 
     /// Core request helper with capped exponential backoff. Retries on connection

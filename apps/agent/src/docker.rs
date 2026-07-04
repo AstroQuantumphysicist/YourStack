@@ -16,7 +16,7 @@ use base64::Engine as _;
 use bollard::auth::DockerCredentials;
 use bollard::container::{
     Config, CreateContainerOptions, ListContainersOptions, LogOutput, LogsOptions,
-    RemoveContainerOptions, StopContainerOptions,
+    RemoveContainerOptions, StatsOptions, StopContainerOptions,
 };
 use bollard::image::CreateImageOptions;
 use bollard::models::{HostConfig, PortBinding, RestartPolicy, RestartPolicyNameEnum};
@@ -43,6 +43,19 @@ pub struct RunResult {
     pub host_port: Option<u16>,
 }
 
+/// A single resource-usage sample for one managed container, paired with its
+/// Docker labels so the caller can map it to an app/database/function id.
+#[derive(Debug, Clone)]
+pub struct ContainerSample {
+    pub labels: HashMap<String, String>,
+    pub cpu_percent: f64,
+    pub mem_mb: f64,
+    pub mem_percent: f64,
+    pub net_rx_kb: f64,
+    pub net_tx_kb: f64,
+    pub disk_mb: f64,
+}
+
 #[derive(Clone)]
 pub struct DockerClient {
     docker: Docker,
@@ -55,6 +68,21 @@ impl DockerClient {
         let docker = Docker::connect_with_local_defaults()
             .context("connecting to the local Docker daemon")?;
         Ok(DockerClient { docker, data_dir })
+    }
+
+    /// Borrow the underlying bollard client for higher-level modules (resources).
+    pub(crate) fn engine(&self) -> &Docker {
+        &self.docker
+    }
+
+    /// The agent's data directory (build workspaces, generated sources).
+    pub(crate) fn data_dir(&self) -> &std::path::Path {
+        &self.data_dir
+    }
+
+    /// Pull an image if needed (idempotent). Returns progress log lines.
+    pub(crate) async fn ensure_image(&self, image: &str) -> Result<Vec<String>> {
+        self.pull_image(image, None).await
     }
 
     /// Server version string, or `None` if the daemon is unreachable.
@@ -248,7 +276,7 @@ impl DockerClient {
 
     /// Clone a git repo (shallow) at `git_ref` into the data dir. Injects the
     /// clone token into the URL for private HTTPS repos.
-    async fn clone_repo(
+    pub(crate) async fn clone_repo(
         &self,
         repo_url: &str,
         git_ref: &str,
@@ -315,7 +343,7 @@ impl DockerClient {
 
     /// Build an image by shelling out to `docker build`. Streams combined output
     /// into the returned log lines.
-    async fn docker_build(
+    pub(crate) async fn docker_build(
         &self,
         context: &std::path::Path,
         dockerfile: Option<&std::path::Path>,
@@ -529,6 +557,116 @@ impl DockerClient {
     }
 }
 
+impl DockerClient {
+    /// Sample one-shot resource stats for every running `io.yourstack.managed`
+    /// container, computing CPU%, memory, and cumulative network/disk figures.
+    /// Best-effort per container: a failing stat is skipped, not fatal.
+    pub async fn sample_managed_containers(&self) -> Result<Vec<ContainerSample>> {
+        let mut filters: HashMap<String, Vec<String>> = HashMap::new();
+        filters.insert("label".to_string(), vec![format!("{LABEL_MANAGED}=true")]);
+        let opts = ListContainersOptions {
+            all: false,
+            filters,
+            ..Default::default()
+        };
+        let containers = self
+            .docker
+            .list_containers(Some(opts))
+            .await
+            .context("listing managed containers for stats")?;
+
+        let mut samples = Vec::new();
+        for c in containers {
+            let id = match c.id.as_deref() {
+                Some(id) => id.to_string(),
+                None => continue,
+            };
+            let labels = c.labels.clone().unwrap_or_default();
+
+            // stream=false with one_shot=false makes the daemon populate precpu,
+            // so a single read yields a valid CPU delta.
+            let stat_opts = StatsOptions {
+                stream: false,
+                one_shot: false,
+            };
+            let mut stream = self.docker.stats(&id, Some(stat_opts));
+            let stats = match stream.next().await {
+                Some(Ok(s)) => s,
+                _ => continue,
+            };
+
+            let cpu_percent = compute_cpu_percent(
+                stats.precpu_stats.cpu_usage.total_usage,
+                stats.cpu_stats.cpu_usage.total_usage,
+                stats.precpu_stats.system_cpu_usage.unwrap_or(0),
+                stats.cpu_stats.system_cpu_usage.unwrap_or(0),
+                stats
+                    .cpu_stats
+                    .online_cpus
+                    .filter(|n| *n > 0)
+                    .or_else(|| {
+                        stats
+                            .cpu_stats
+                            .cpu_usage
+                            .percpu_usage
+                            .as_ref()
+                            .map(|v| v.len() as u64)
+                    })
+                    .unwrap_or(1),
+            );
+
+            let mem_used = stats.memory_stats.usage.unwrap_or(0);
+            let mem_limit = stats.memory_stats.limit.unwrap_or(0);
+            let mem_mb = mem_used as f64 / (1024.0 * 1024.0);
+            let mem_percent = if mem_limit > 0 {
+                (mem_used as f64 / mem_limit as f64) * 100.0
+            } else {
+                0.0
+            };
+
+            let (mut rx, mut tx) = (0u64, 0u64);
+            if let Some(networks) = &stats.networks {
+                for n in networks.values() {
+                    rx = rx.saturating_add(n.rx_bytes);
+                    tx = tx.saturating_add(n.tx_bytes);
+                }
+            }
+            let disk_bytes = stats.storage_stats.read_size_bytes.unwrap_or(0)
+                + stats.storage_stats.write_size_bytes.unwrap_or(0);
+
+            samples.push(ContainerSample {
+                labels,
+                cpu_percent,
+                mem_mb,
+                mem_percent,
+                net_rx_kb: rx as f64 / 1024.0,
+                net_tx_kb: tx as f64 / 1024.0,
+                disk_mb: disk_bytes as f64 / (1024.0 * 1024.0),
+            });
+        }
+        Ok(samples)
+    }
+}
+
+/// Docker's container CPU% formula: the container CPU-time delta over the system
+/// CPU-time delta, scaled by the number of online CPUs. Returns `0.0` when the
+/// system delta is non-positive (first sample / clock skew).
+pub fn compute_cpu_percent(
+    prev_total: u64,
+    cur_total: u64,
+    prev_system: u64,
+    cur_system: u64,
+    online_cpus: u64,
+) -> f64 {
+    let cpu_delta = cur_total.saturating_sub(prev_total) as f64;
+    let system_delta = cur_system.saturating_sub(prev_system) as f64;
+    if system_delta <= 0.0 || cpu_delta < 0.0 {
+        return 0.0;
+    }
+    let cpus = online_cpus.max(1) as f64;
+    ((cpu_delta / system_delta) * cpus * 100.0).clamp(0.0, cpus * 100.0)
+}
+
 /// Poll `http://127.0.0.1:{port}{path}` until the expected status is observed or
 /// retries are exhausted. Returns `true` when healthy.
 pub async fn run_healthcheck(
@@ -677,5 +815,25 @@ fn generate_dockerfile(
                 "FROM node:20-alpine AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN {install}\nCOPY . .\nRUN {build}\n\nFROM nginx:alpine\nCOPY --from=build /app/dist /usr/share/nginx/html\nEXPOSE {port}\n"
             )
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cpu_percent_matches_docker_formula() {
+        // 50% of one core: cpu delta is half the system delta, 1 cpu.
+        assert!((compute_cpu_percent(0, 500, 0, 1000, 1) - 50.0).abs() < 1e-9);
+        // Same deltas across 4 cpus scales to 200%.
+        assert!((compute_cpu_percent(0, 500, 0, 1000, 4) - 200.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn cpu_percent_zero_when_no_system_delta() {
+        // First sample (no prior system usage) or clock skew -> 0, never NaN/inf.
+        assert_eq!(compute_cpu_percent(100, 200, 0, 0, 2), 0.0);
+        assert_eq!(compute_cpu_percent(0, 100, 500, 500, 2), 0.0);
     }
 }

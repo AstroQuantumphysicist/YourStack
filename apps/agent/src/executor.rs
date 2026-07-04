@@ -22,6 +22,7 @@ use crate::protocol::{
     CommandOutput, CommandPayload, CommandResultBody, CommandStatus, DeployAppSpec, LogBatch,
     LogEvent, LogSeverity, LogStream, NodeCommand,
 };
+use crate::resources;
 use crate::util::now_iso8601;
 
 pub struct Executor {
@@ -187,6 +188,43 @@ impl Executor {
                     spec.since_seconds,
                 )
                 .await
+            }
+            // ---- v2 managed resources ----
+            CommandPayload::ProvisionDatabase { spec } => {
+                resources::provision_database(self.require_docker()?, &spec).await
+            }
+            CommandPayload::StopDatabase { spec } => {
+                resources::stop_database(self.require_docker()?, &spec).await
+            }
+            CommandPayload::RemoveDatabase { spec } => {
+                resources::remove_database(self.require_docker()?, &spec).await
+            }
+            CommandPayload::BackupDatabase { spec } => {
+                resources::backup_database(self.require_docker()?, &spec).await
+            }
+            CommandPayload::ProvisionStorage { spec } => {
+                resources::provision_storage(self.require_docker()?, &spec).await
+            }
+            CommandPayload::RemoveStorage { spec } => {
+                resources::remove_storage(self.require_docker()?, &spec).await
+            }
+            CommandPayload::DeployFunction { spec } => {
+                resources::deploy_function(self.require_docker()?, &spec).await
+            }
+            CommandPayload::InvokeFunction { spec } => {
+                resources::invoke_function(self.require_docker()?, &spec).await
+            }
+            CommandPayload::RemoveFunction { spec } => {
+                resources::remove_function(self.require_docker()?, &spec).await
+            }
+            CommandPayload::RegisterRunner { spec } => {
+                resources::register_runner(self.require_docker()?, &spec).await
+            }
+            CommandPayload::DeregisterRunner { spec } => {
+                resources::deregister_runner(self.require_docker()?, &spec).await
+            }
+            CommandPayload::ScaleApp { spec } => {
+                resources::scale_app(self.require_docker()?, &spec).await
             }
         }
     }

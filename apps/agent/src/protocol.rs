@@ -22,6 +22,10 @@ pub const AGENT_PROTOCOL_VERSION: i64 = 1;
 pub const LABEL_MANAGED: &str = "io.yourstack.managed";
 pub const LABEL_APP: &str = "io.yourstack.app";
 pub const LABEL_DEPLOYMENT: &str = "io.yourstack.deployment";
+pub const LABEL_DATABASE: &str = "io.yourstack.database";
+pub const LABEL_STORAGE: &str = "io.yourstack.storage";
+pub const LABEL_FUNCTION: &str = "io.yourstack.function";
+pub const LABEL_RUNNER: &str = "io.yourstack.runner";
 
 /* ------------------------------- registration ------------------------------ */
 
@@ -170,6 +174,31 @@ pub enum CommandPayload {
     ConfigureDomain { spec: ConfigureDomainSpec },
     #[serde(rename = "ROLLBACK_DEPLOYMENT")]
     RollbackDeployment { spec: RollbackDeploymentSpec },
+    // ---- v2 managed resources ----
+    #[serde(rename = "PROVISION_DATABASE")]
+    ProvisionDatabase { spec: ProvisionDatabaseSpec },
+    #[serde(rename = "STOP_DATABASE")]
+    StopDatabase { spec: StopDatabaseSpec },
+    #[serde(rename = "REMOVE_DATABASE")]
+    RemoveDatabase { spec: RemoveDatabaseSpec },
+    #[serde(rename = "BACKUP_DATABASE")]
+    BackupDatabase { spec: BackupDatabaseSpec },
+    #[serde(rename = "PROVISION_STORAGE")]
+    ProvisionStorage { spec: ProvisionStorageSpec },
+    #[serde(rename = "REMOVE_STORAGE")]
+    RemoveStorage { spec: RemoveStorageSpec },
+    #[serde(rename = "DEPLOY_FUNCTION")]
+    DeployFunction { spec: DeployFunctionSpec },
+    #[serde(rename = "INVOKE_FUNCTION")]
+    InvokeFunction { spec: InvokeFunctionSpec },
+    #[serde(rename = "REMOVE_FUNCTION")]
+    RemoveFunction { spec: RemoveFunctionSpec },
+    #[serde(rename = "REGISTER_RUNNER")]
+    RegisterRunner { spec: RegisterRunnerSpec },
+    #[serde(rename = "DEREGISTER_RUNNER")]
+    DeregisterRunner { spec: DeregisterRunnerSpec },
+    #[serde(rename = "SCALE_APP")]
+    ScaleApp { spec: ScaleAppSpec },
 }
 
 impl CommandPayload {
@@ -184,6 +213,18 @@ impl CommandPayload {
             CommandPayload::HealthCheck { .. } => "HEALTH_CHECK",
             CommandPayload::ConfigureDomain { .. } => "CONFIGURE_DOMAIN",
             CommandPayload::RollbackDeployment { .. } => "ROLLBACK_DEPLOYMENT",
+            CommandPayload::ProvisionDatabase { .. } => "PROVISION_DATABASE",
+            CommandPayload::StopDatabase { .. } => "STOP_DATABASE",
+            CommandPayload::RemoveDatabase { .. } => "REMOVE_DATABASE",
+            CommandPayload::BackupDatabase { .. } => "BACKUP_DATABASE",
+            CommandPayload::ProvisionStorage { .. } => "PROVISION_STORAGE",
+            CommandPayload::RemoveStorage { .. } => "REMOVE_STORAGE",
+            CommandPayload::DeployFunction { .. } => "DEPLOY_FUNCTION",
+            CommandPayload::InvokeFunction { .. } => "INVOKE_FUNCTION",
+            CommandPayload::RemoveFunction { .. } => "REMOVE_FUNCTION",
+            CommandPayload::RegisterRunner { .. } => "REGISTER_RUNNER",
+            CommandPayload::DeregisterRunner { .. } => "DEREGISTER_RUNNER",
+            CommandPayload::ScaleApp { .. } => "SCALE_APP",
         }
     }
 }
@@ -421,6 +462,253 @@ pub struct RollbackDeploymentSpec {
     pub spec: DeployAppSpec,
 }
 
+/* --------------------------- v2 resource specs ----------------------------- */
+
+/// `databaseEngineSchema` — `postgres` | `mysql` | `redis` | `mongodb`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DatabaseEngine {
+    Postgres,
+    Mysql,
+    Redis,
+    Mongodb,
+}
+
+fn default_db_version() -> String {
+    "16".to_string()
+}
+fn default_db_name() -> String {
+    "app".to_string()
+}
+fn default_db_username() -> String {
+    "yourstack".to_string()
+}
+fn default_db_storage_mb() -> i64 {
+    10_240
+}
+
+/// `provisionDatabaseSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProvisionDatabaseSpec {
+    #[serde(rename = "databaseId")]
+    pub database_id: String,
+    pub engine: DatabaseEngine,
+    #[serde(default = "default_db_version")]
+    pub version: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    #[serde(rename = "dbName", default = "default_db_name")]
+    pub db_name: String,
+    #[serde(default = "default_db_username")]
+    pub username: String,
+    pub password: String,
+    #[serde(rename = "storageMb", default = "default_db_storage_mb")]
+    pub storage_mb: i64,
+    pub resources: ResourceSpec,
+    pub port: u16,
+    #[serde(rename = "networkName", default)]
+    pub network_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StopDatabaseSpec {
+    #[serde(rename = "databaseId")]
+    pub database_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RemoveDatabaseSpec {
+    #[serde(rename = "databaseId")]
+    pub database_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    #[serde(rename = "removeVolume", default)]
+    pub remove_volume: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BackupDatabaseSpec {
+    #[serde(rename = "databaseId")]
+    pub database_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    pub engine: DatabaseEngine,
+    #[serde(rename = "bucketId", default)]
+    pub bucket_id: Option<String>,
+}
+
+fn default_quota_mb() -> i64 {
+    51_200
+}
+
+/// `provisionStorageSpecSchema` — MinIO (S3-compatible) object storage.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProvisionStorageSpec {
+    #[serde(rename = "bucketId")]
+    pub bucket_id: String,
+    #[serde(rename = "bucketName")]
+    pub bucket_name: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    #[serde(rename = "accessKey")]
+    pub access_key: String,
+    #[serde(rename = "secretKey")]
+    pub secret_key: String,
+    #[serde(rename = "quotaMb", default = "default_quota_mb")]
+    pub quota_mb: i64,
+    #[serde(rename = "isPublic", default)]
+    pub is_public: bool,
+    pub port: u16,
+    #[serde(rename = "consolePort", default)]
+    pub console_port: Option<u16>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RemoveStorageSpec {
+    #[serde(rename = "bucketId")]
+    pub bucket_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    #[serde(rename = "removeVolume", default)]
+    pub remove_volume: bool,
+}
+
+/// `functionRuntimeSchema` — supported function runtimes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FunctionRuntime {
+    Node20,
+    Python311,
+    Go122,
+    Bun1,
+}
+
+/// The function source bundle, discriminated by `kind`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum FunctionSource {
+    Inline {
+        code: String,
+    },
+    Bundle {
+        #[serde(rename = "tarballBase64")]
+        tarball_base64: String,
+    },
+    Git {
+        #[serde(rename = "repoUrl")]
+        repo_url: String,
+        #[serde(rename = "ref")]
+        git_ref: String,
+        #[serde(rename = "cloneToken", default)]
+        clone_token: Option<String>,
+    },
+}
+
+fn default_handler() -> String {
+    "index.handler".to_string()
+}
+fn default_fn_memory_mb() -> i64 {
+    256
+}
+fn default_fn_timeout_ms() -> i64 {
+    30_000
+}
+fn default_min_instances() -> i64 {
+    0
+}
+
+/// `deployFunctionSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeployFunctionSpec {
+    #[serde(rename = "functionId")]
+    pub function_id: String,
+    pub name: String,
+    pub runtime: FunctionRuntime,
+    #[serde(default = "default_handler")]
+    pub handler: String,
+    pub source: FunctionSource,
+    #[serde(default)]
+    pub env: BTreeMap<String, String>,
+    #[serde(rename = "memoryMb", default = "default_fn_memory_mb")]
+    pub memory_mb: i64,
+    #[serde(rename = "timeoutMs", default = "default_fn_timeout_ms")]
+    pub timeout_ms: i64,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    pub port: u16,
+    #[serde(rename = "minInstances", default = "default_min_instances")]
+    pub min_instances: i64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct InvokeFunctionSpec {
+    #[serde(rename = "functionId")]
+    pub function_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    #[serde(default)]
+    pub payload: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RemoveFunctionSpec {
+    #[serde(rename = "functionId")]
+    pub function_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+}
+
+fn default_runner_labels() -> Vec<String> {
+    vec!["yourstack".to_string(), "self-hosted".to_string()]
+}
+fn default_ephemeral() -> bool {
+    true
+}
+
+/// The documented placeholder token: a runner spec carrying this token has not
+/// been connected to GitHub yet, so registration is expected to fail cleanly.
+pub const RUNNER_TOKEN_PLACEHOLDER: &str = "PLACEHOLDER_CONNECT_GITHUB";
+
+/// `registerRunnerSpecSchema`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RegisterRunnerSpec {
+    #[serde(rename = "runnerId")]
+    pub runner_id: String,
+    #[serde(rename = "poolId")]
+    pub pool_id: String,
+    #[serde(rename = "registrationToken")]
+    pub registration_token: String,
+    #[serde(rename = "githubUrl")]
+    pub github_url: String,
+    #[serde(default = "default_runner_labels")]
+    pub labels: Vec<String>,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    #[serde(default = "default_ephemeral")]
+    pub ephemeral: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeregisterRunnerSpec {
+    #[serde(rename = "runnerId")]
+    pub runner_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+}
+
+/// `scaleAppSpecSchema` — reconcile N replica containers for an app.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ScaleAppSpec {
+    #[serde(rename = "appId")]
+    pub app_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    pub replicas: i64,
+    pub resources: ResourceSpec,
+}
+
 /* ---------------------------------- results -------------------------------- */
 
 /// The status transitions a command can report (`commandResultSchema.status`).
@@ -507,4 +795,53 @@ pub struct LogBatch {
     #[serde(rename = "commandId", skip_serializing_if = "Option::is_none")]
     pub command_id: Option<String>,
     pub events: Vec<LogEvent>,
+}
+
+/* ---------------------------------- metrics -------------------------------- */
+
+/// `metricPointSchema.scope`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MetricScope {
+    App,
+    Node,
+    Database,
+    Function,
+}
+
+/// `metricPointSchema.kind` — the sampled quantity. Serializes to the exact
+/// snake_case strings the API's `z.enum` accepts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MetricKind {
+    CpuPercent,
+    MemMb,
+    MemPercent,
+    Rps,
+    LatencyMs,
+    NetRxKb,
+    NetTxKb,
+    DiskMb,
+    Replicas,
+}
+
+/// `metricPointSchema`.
+#[derive(Debug, Clone, Serialize)]
+pub struct MetricPoint {
+    pub scope: MetricScope,
+    #[serde(rename = "targetId")]
+    pub target_id: String,
+    pub kind: MetricKind,
+    pub value: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instance: Option<String>,
+    pub timestamp: String,
+}
+
+/// `metricBatchSchema`.
+#[derive(Debug, Clone, Serialize)]
+pub struct MetricBatch {
+    #[serde(rename = "nodeId", skip_serializing_if = "Option::is_none")]
+    pub node_id: Option<String>,
+    pub points: Vec<MetricPoint>,
 }

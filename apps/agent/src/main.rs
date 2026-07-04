@@ -16,6 +16,7 @@ mod daemon;
 mod docker;
 mod executor;
 mod protocol;
+mod resources;
 mod signing;
 mod telemetry;
 mod util;

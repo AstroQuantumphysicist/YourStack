@@ -12,6 +12,7 @@
 //! A command whose signature does not verify is dropped and reported as failed —
 //! it is never executed.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -24,10 +25,15 @@ use crate::config::Config;
 use crate::docker::DockerClient;
 use crate::executor::Executor;
 use crate::protocol::{
-    CommandOutput, CommandResultBody, CommandStatus, DesiredStatus, HeartbeatRequest, NodeCommand,
+    CommandOutput, CommandResultBody, CommandStatus, DesiredStatus, HeartbeatRequest, MetricBatch,
+    MetricKind, MetricPoint, MetricScope, NodeCommand, LABEL_APP, LABEL_DATABASE, LABEL_FUNCTION,
 };
 use crate::signing::verify_command;
 use crate::telemetry::Collector;
+use crate::util::now_iso8601;
+
+/// How often the metrics reporter samples container + node resource usage.
+const METRICS_INTERVAL: Duration = Duration::from_secs(15);
 
 pub async fn run(config: Config) -> Result<()> {
     if !config.is_registered() {
@@ -64,6 +70,14 @@ pub async fn run(config: Config) -> Result<()> {
 
     let shutdown = Arc::new(Notify::new());
     spawn_signal_handler(shutdown.clone());
+
+    // Background resource/node metrics reporter (best-effort; never fatal).
+    spawn_metrics_reporter(
+        api.clone(),
+        docker.clone(),
+        config.node_id.clone(),
+        shutdown.clone(),
+    );
 
     tracing::info!(node_id = %config.node_id, api = %config.api_url, "agent daemon started");
 
@@ -158,6 +172,120 @@ async fn report_rejected(api: &ApiClient, command_id: &str, error: &str) {
     if let Err(e) = api.post_result(command_id, &body).await {
         tracing::warn!(%command_id, error = %e, "failed to report rejected command");
     }
+}
+
+/// Spawn a ~15s loop that samples managed-container + node metrics and POSTs a
+/// `metricBatch` to the control plane. All errors are logged and swallowed so the
+/// reporter never takes down the daemon.
+fn spawn_metrics_reporter(
+    api: ApiClient,
+    docker: Option<DockerClient>,
+    node_id: String,
+    shutdown: Arc<Notify>,
+) {
+    tokio::spawn(async move {
+        let mut collector = Collector::new();
+        let mut tick = tokio::time::interval(METRICS_INTERVAL);
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            tokio::select! {
+                _ = shutdown.notified() => break,
+                _ = tick.tick() => {
+                    let points = collect_metrics(&mut collector, docker.as_ref(), &node_id).await;
+                    if points.is_empty() {
+                        continue;
+                    }
+                    let batch = MetricBatch {
+                        node_id: Some(node_id.clone()),
+                        points,
+                    };
+                    if let Err(e) = api.post_metrics(&batch).await {
+                        tracing::warn!(error = %e, "posting metrics failed");
+                    }
+                }
+            }
+        }
+    });
+}
+
+/// Build the metric points for one sampling cycle: node-level gauges plus a set
+/// of per-container gauges mapped to their app/database/function id via labels.
+async fn collect_metrics(
+    collector: &mut Collector,
+    docker: Option<&DockerClient>,
+    node_id: &str,
+) -> Vec<MetricPoint> {
+    let timestamp = now_iso8601();
+    let mut points = Vec::new();
+
+    // Node-level.
+    let node = collector.node_metrics().await;
+    for (kind, value) in [
+        (MetricKind::CpuPercent, node.cpu_percent),
+        (MetricKind::MemMb, node.mem_mb),
+        (MetricKind::MemPercent, node.mem_percent),
+        (MetricKind::DiskMb, node.disk_mb),
+    ] {
+        points.push(MetricPoint {
+            scope: MetricScope::Node,
+            target_id: node_id.to_string(),
+            kind,
+            value,
+            instance: None,
+            timestamp: timestamp.clone(),
+        });
+    }
+
+    // Per managed container.
+    if let Some(d) = docker {
+        match d.sample_managed_containers().await {
+            Ok(samples) => {
+                for s in samples {
+                    let (scope, target_id) = match classify_container(&s.labels) {
+                        Some(mapping) => mapping,
+                        None => continue,
+                    };
+                    let instance = s.labels.get("io.yourstack.instance").cloned();
+                    for (kind, value) in [
+                        (MetricKind::CpuPercent, s.cpu_percent),
+                        (MetricKind::MemMb, s.mem_mb),
+                        (MetricKind::MemPercent, s.mem_percent),
+                        (MetricKind::NetRxKb, s.net_rx_kb),
+                        (MetricKind::NetTxKb, s.net_tx_kb),
+                        (MetricKind::DiskMb, s.disk_mb),
+                    ] {
+                        points.push(MetricPoint {
+                            scope,
+                            target_id: target_id.clone(),
+                            kind,
+                            value,
+                            instance: instance.clone(),
+                            timestamp: timestamp.clone(),
+                        });
+                    }
+                }
+            }
+            Err(e) => tracing::warn!(error = %e, "sampling container stats failed"),
+        }
+    }
+
+    points
+}
+
+/// Map a container's labels to its metric scope + target id, preferring the most
+/// specific resource kind. Storage/runner containers have no metric scope and are
+/// intentionally skipped.
+fn classify_container(labels: &HashMap<String, String>) -> Option<(MetricScope, String)> {
+    if let Some(id) = labels.get(LABEL_DATABASE) {
+        return Some((MetricScope::Database, id.clone()));
+    }
+    if let Some(id) = labels.get(LABEL_FUNCTION) {
+        return Some((MetricScope::Function, id.clone()));
+    }
+    if let Some(id) = labels.get(LABEL_APP) {
+        return Some((MetricScope::App, id.clone()));
+    }
+    None
 }
 
 /// Register a Ctrl-C (and SIGTERM on Unix) handler that fires the shutdown notify.

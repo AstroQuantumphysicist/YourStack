@@ -15,6 +15,14 @@ use crate::protocol::{NodeTelemetry, RegisterTelemetry, AGENT_PROTOCOL_VERSION};
 const AGENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const BYTES_PER_MB: u64 = 1024 * 1024;
 
+/// Node-level resource metrics sampled for the metrics reporter.
+pub struct NodeMetrics {
+    pub cpu_percent: f64,
+    pub mem_mb: f64,
+    pub mem_percent: f64,
+    pub disk_mb: f64,
+}
+
 /// Holds long-lived probes so repeated telemetry reads are cheap and CPU deltas
 /// are meaningful.
 pub struct Collector {
@@ -71,6 +79,25 @@ impl Collector {
             public_ip: None,
             uptime_seconds: Some(System::uptime() as i64),
             running_apps,
+        }
+    }
+
+    /// Node-level resource metrics for the metrics reporter (distinct from the
+    /// heartbeat's telemetry snapshot; returns percentages and MB directly).
+    pub async fn node_metrics(&mut self) -> NodeMetrics {
+        let cpu_percent = self.cpu_usage_percent().await;
+        let (mem_total_mb, mem_used_mb) = self.memory_mb();
+        let (_disk_total_mb, disk_used_mb) = disk_mb();
+        let mem_percent = if mem_total_mb > 0 {
+            (mem_used_mb as f64 / mem_total_mb as f64) * 100.0
+        } else {
+            0.0
+        };
+        NodeMetrics {
+            cpu_percent,
+            mem_mb: mem_used_mb as f64,
+            mem_percent,
+            disk_mb: disk_used_mb as f64,
         }
     }
 
