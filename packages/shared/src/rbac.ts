@@ -79,6 +79,13 @@ export const Permission = {
   CRON_VIEW: 'cron:view',
   CRON_WRITE: 'cron:write',
   GITHUB_APP_MANAGE: 'github_app:manage',
+  // v4
+  FIREWALL_VIEW: 'firewall:view',
+  FIREWALL_WRITE: 'firewall:write',
+  LB_VIEW: 'lb:view',
+  LB_WRITE: 'lb:write',
+  NODE_ADMIN: 'node:admin',
+  BLUEPRINT_APPLY: 'blueprint:apply',
 } as const;
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
@@ -104,6 +111,8 @@ const VIEWER_PERMISSIONS: Permission[] = [
   Permission.REGION_VIEW,
   Permission.TEMPLATE_VIEW,
   Permission.CRON_VIEW,
+  Permission.FIREWALL_VIEW,
+  Permission.LB_VIEW,
 ];
 
 const DEVELOPER_PERMISSIONS: Permission[] = [
@@ -138,6 +147,9 @@ const DEVELOPER_PERMISSIONS: Permission[] = [
   Permission.TEMPLATE_DEPLOY,
   Permission.CRON_WRITE,
   Permission.GITHUB_APP_MANAGE,
+  Permission.FIREWALL_WRITE,
+  Permission.LB_WRITE,
+  Permission.BLUEPRINT_APPLY,
 ];
 
 const ADMIN_PERMISSIONS: Permission[] = [
@@ -151,6 +163,7 @@ const ADMIN_PERMISSIONS: Permission[] = [
   Permission.NODE_REMOVE,
   Permission.TOKEN_REVOKE,
   Permission.AUDIT_VIEW,
+  Permission.NODE_ADMIN,
 ];
 
 /** Owner has everything, including destructive/billing actions. */

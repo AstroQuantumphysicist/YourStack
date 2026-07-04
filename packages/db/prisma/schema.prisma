@@ -90,6 +90,12 @@ enum CommandType {
   DEREGISTER_RUNNER
   SCALE_APP
   RUN_JOB
+  CONFIGURE_FIREWALL
+  PROVISION_LB
+  REMOVE_LB
+  NODE_REBOOT
+  DOCKER_PRUNE
+  AGENT_UPDATE
 }
 
 enum CommandStatus {
@@ -159,11 +165,13 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  oauthAccounts OAuthAccount[]
-  sessions      Session[]
-  memberships   WorkspaceMember[]
-  apiTokens     ApiToken[]
-  auditLogs     AuditLog[]
+  oauthAccounts   OAuthAccount[]
+  sessions        Session[]
+  memberships     WorkspaceMember[]
+  apiTokens       ApiToken[]
+  auditLogs       AuditLog[]
+  orgMemberships  OrgMember[]
+  teamMemberships TeamMember[]
 
   @@index([email])
 }
@@ -217,15 +225,17 @@ model Plan {
 }
 
 model Workspace {
-  id        String          @id @default(cuid())
-  name      String
-  slug      String          @unique
-  status    WorkspaceStatus @default(active)
-  planKey   String          @default("dev")
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  deletedAt DateTime?
+  id             String          @id @default(cuid())
+  organizationId String?
+  name           String
+  slug           String          @unique
+  status         WorkspaceStatus @default(active)
+  planKey        String          @default("dev")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
 
+  organization   Organization?        @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   plan           Plan                 @relation(fields: [planKey], references: [key])
   members        WorkspaceMember[]
   projects       Project[]
@@ -237,9 +247,12 @@ model Workspace {
   apiTokens      ApiToken[]
   runnerPools    RunnerPool[]
   githubInstalls GithubInstallation[]
+  grants         WorkspaceGrant[]
+  firewalls      Firewall[]
 
   @@index([slug])
   @@index([status])
+  @@index([organizationId])
 }
 
 model WorkspaceMember {
@@ -283,13 +296,14 @@ model Project {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  workspace Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  apps      App[]
-  secrets   Secret[]
-  databases ManagedDatabase[]
-  buckets   StorageBucket[]
-  functions ServerlessFunction[]
-  cronJobs  CronJob[]
+  workspace     Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  apps          App[]
+  secrets       Secret[]
+  databases     ManagedDatabase[]
+  buckets       StorageBucket[]
+  functions     ServerlessFunction[]
+  cronJobs      CronJob[]
+  loadBalancers LoadBalancer[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId])
@@ -409,17 +423,18 @@ model Node {
   updatedAt       DateTime   @updatedAt
   deletedAt       DateTime?
 
-  workspace   Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  labels      NodeLabel[]
-  heartbeats  NodeHeartbeat[]
-  commands    NodeCommand[]
-  apps        App[]
-  deployments Deployment[]
-  databases   ManagedDatabase[]
-  buckets     StorageBucket[]
-  functions   ServerlessFunction[]
-  runners     Runner[]
-  cronJobs    CronJob[]
+  workspace     Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  labels        NodeLabel[]
+  heartbeats    NodeHeartbeat[]
+  commands      NodeCommand[]
+  apps          App[]
+  deployments   Deployment[]
+  databases     ManagedDatabase[]
+  buckets       StorageBucket[]
+  functions     ServerlessFunction[]
+  runners       Runner[]
+  cronJobs      CronJob[]
+  loadBalancers LoadBalancer[]
 
   @@index([workspaceId])
   @@index([status])
@@ -1067,4 +1082,188 @@ model CronRun {
   cronJob CronJob @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
 
   @@index([cronJobId, startedAt])
+}
+
+// === v4: Organizations, Teams, Firewalls, Load Balancers ===
+
+enum OrgRole {
+  owner
+  admin
+  member
+}
+
+enum TeamRole {
+  lead
+  member
+}
+
+enum FirewallStatus {
+  draft
+  applying
+  active
+  failed
+}
+
+enum LoadBalancerStatus {
+  provisioning
+  active
+  degraded
+  failed
+}
+
+enum LBAlgorithm {
+  round_robin
+  least_conn
+  ip_hash
+}
+
+/// Top-level tenant. Workspaces belong to an organization; teams grant scoped access.
+model Organization {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  members    OrgMember[]
+  teams      Team[]
+  workspaces Workspace[]
+
+  @@index([slug])
+}
+
+model OrgMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrgRole  @default(member)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Team {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      TeamMember[]
+  grants       WorkspaceGrant[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      TeamRole @default(member)
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+/// Grants a team access to a workspace at a given workspace role.
+model WorkspaceGrant {
+  id          String        @id @default(cuid())
+  teamId      String
+  workspaceId String
+  role        WorkspaceRole @default(developer)
+  createdAt   DateTime      @default(now())
+
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, workspaceId])
+  @@index([workspaceId])
+}
+
+/// A firewall ruleset applied to one or more nodes.
+model Firewall {
+  id              String         @id @default(cuid())
+  workspaceId     String
+  name            String
+  status          FirewallStatus @default(draft)
+  defaultInbound  String         @default("deny")
+  defaultOutbound String         @default("allow")
+  nodeIds         String[]
+  createdById     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  rules     FirewallRule[]
+
+  @@index([workspaceId])
+}
+
+model FirewallRule {
+  id         String  @id @default(cuid())
+  firewallId String
+  direction  String  @default("inbound")
+  action     String  @default("allow")
+  protocol   String  @default("tcp")
+  port       String?
+  cidr       String  @default("0.0.0.0/0")
+  comment    String?
+  position   Int     @default(0)
+
+  firewall Firewall @relation(fields: [firewallId], references: [id], onDelete: Cascade)
+
+  @@index([firewallId, position])
+}
+
+/// A load balancer (Caddy/HAProxy) fronting a set of app/backend targets.
+model LoadBalancer {
+  id            String             @id @default(cuid())
+  projectId     String
+  nodeId        String?
+  name          String
+  status        LoadBalancerStatus @default(provisioning)
+  listenPort    Int                @default(80)
+  algorithm     LBAlgorithm        @default(round_robin)
+  region        String?
+  domain        String?
+  autoHttps     Boolean            @default(false)
+  sticky        Boolean            @default(false)
+  containerName String?
+  createdById   String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  deletedAt     DateTime?
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  node    Node?      @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+  targets LBTarget[]
+
+  @@index([projectId])
+  @@index([nodeId])
+}
+
+model LBTarget {
+  id             String  @id @default(cuid())
+  loadBalancerId String
+  address        String
+  weight         Int     @default(1)
+  appId          String?
+
+  loadBalancer LoadBalancer @relation(fields: [loadBalancerId], references: [id], onDelete: Cascade)
+
+  @@index([loadBalancerId])
 }

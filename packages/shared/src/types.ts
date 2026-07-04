@@ -379,3 +379,84 @@ export interface GithubInstallationDTO {
   repositoryCount: number;
   createdAt: string;
 }
+
+/* -------------------------------- Orgs & teams (v4) ------------------------- */
+
+export interface OrganizationDTO {
+  id: string;
+  name: string;
+  slug: string;
+  role: string; // caller's org role
+  workspaceCount: number;
+  teamCount: number;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface OrgMemberDTO {
+  id: string;
+  userId: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  role: string;
+  createdAt: string;
+}
+
+export interface TeamDTO {
+  id: string;
+  organizationId: string;
+  name: string;
+  slug: string;
+  memberCount: number;
+  workspaceGrants: Array<{ workspaceId: string; role: string }>;
+  createdAt: string;
+}
+
+export interface TeamMemberDTO {
+  id: string;
+  userId: string;
+  email: string;
+  name: string | null;
+  role: string;
+}
+
+/* -------------------------------- Networking (v4) -------------------------- */
+
+export interface FirewallRuleDTO {
+  id: string;
+  direction: string;
+  action: string;
+  protocol: string;
+  port: string | null;
+  cidr: string;
+  comment: string | null;
+}
+
+export interface FirewallDTO {
+  id: string;
+  workspaceId: string;
+  name: string;
+  status: string;
+  defaultInbound: string;
+  defaultOutbound: string;
+  nodeIds: string[];
+  rules: FirewallRuleDTO[];
+  createdAt: string;
+}
+
+export interface LoadBalancerDTO {
+  id: string;
+  projectId: string;
+  name: string;
+  status: string;
+  listenPort: number;
+  algorithm: string;
+  nodeId: string | null;
+  region: string | null;
+  domain: string | null;
+  autoHttps: boolean;
+  sticky: boolean;
+  targets: Array<{ address: string; weight: number; appId: string | null }>;
+  createdAt: string;
+}

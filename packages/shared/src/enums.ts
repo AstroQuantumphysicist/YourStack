@@ -142,6 +142,13 @@ export const CommandType = {
   SCALE_APP: 'SCALE_APP',
   // v3: scheduled jobs run a container to completion.
   RUN_JOB: 'RUN_JOB',
+  // v4: networking + node administration
+  CONFIGURE_FIREWALL: 'CONFIGURE_FIREWALL',
+  PROVISION_LB: 'PROVISION_LB',
+  REMOVE_LB: 'REMOVE_LB',
+  NODE_REBOOT: 'NODE_REBOOT',
+  DOCKER_PRUNE: 'DOCKER_PRUNE',
+  AGENT_UPDATE: 'AGENT_UPDATE',
 } as const;
 export type CommandType = (typeof CommandType)[keyof typeof CommandType];
 
@@ -335,3 +342,67 @@ export const GithubAccountType = {
   ORGANIZATION: 'Organization',
 } as const;
 export type GithubAccountType = (typeof GithubAccountType)[keyof typeof GithubAccountType];
+
+/* ------------------------------ v4: orgs & teams ---------------------------- */
+
+/** Organization-level role (top tenant). */
+export const OrgRole = {
+  OWNER: 'owner',
+  ADMIN: 'admin',
+  MEMBER: 'member',
+} as const;
+export type OrgRole = (typeof OrgRole)[keyof typeof OrgRole];
+
+export const ORG_ROLE_RANK: Record<OrgRole, number> = { owner: 2, admin: 1, member: 0 };
+
+/** Team role within an organization. */
+export const TeamRole = {
+  LEAD: 'lead',
+  MEMBER: 'member',
+} as const;
+export type TeamRole = (typeof TeamRole)[keyof typeof TeamRole];
+
+/* ------------------------------ v4: networking ------------------------------ */
+
+export const FirewallStatus = {
+  DRAFT: 'draft',
+  APPLYING: 'applying',
+  ACTIVE: 'active',
+  FAILED: 'failed',
+} as const;
+export type FirewallStatus = (typeof FirewallStatus)[keyof typeof FirewallStatus];
+
+export const FirewallAction = {
+  ALLOW: 'allow',
+  DENY: 'deny',
+} as const;
+export type FirewallAction = (typeof FirewallAction)[keyof typeof FirewallAction];
+
+export const FirewallProtocol = {
+  TCP: 'tcp',
+  UDP: 'udp',
+  ICMP: 'icmp',
+  ANY: 'any',
+} as const;
+export type FirewallProtocol = (typeof FirewallProtocol)[keyof typeof FirewallProtocol];
+
+export const FirewallDirection = {
+  INBOUND: 'inbound',
+  OUTBOUND: 'outbound',
+} as const;
+export type FirewallDirection = (typeof FirewallDirection)[keyof typeof FirewallDirection];
+
+export const LoadBalancerStatus = {
+  PROVISIONING: 'provisioning',
+  ACTIVE: 'active',
+  DEGRADED: 'degraded',
+  FAILED: 'failed',
+} as const;
+export type LoadBalancerStatus = (typeof LoadBalancerStatus)[keyof typeof LoadBalancerStatus];
+
+export const LBAlgorithm = {
+  ROUND_ROBIN: 'round_robin',
+  LEAST_CONN: 'least_conn',
+  IP_HASH: 'ip_hash',
+} as const;
+export type LBAlgorithm = (typeof LBAlgorithm)[keyof typeof LBAlgorithm];

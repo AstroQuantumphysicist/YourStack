@@ -15,6 +15,12 @@ import {
   deregisterRunnerSpecSchema,
   scaleAppSpecSchema,
   runJobSpecSchema,
+  configureFirewallSpecSchema,
+  provisionLbSpecSchema,
+  removeLbSpecSchema,
+  nodeRebootSpecSchema,
+  dockerPruneSpecSchema,
+  agentUpdateSpecSchema,
 } from './resources.js';
 
 /**
@@ -172,6 +178,13 @@ export const commandPayloadSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(CommandType.DEREGISTER_RUNNER), spec: deregisterRunnerSpecSchema }),
   z.object({ type: z.literal(CommandType.SCALE_APP), spec: scaleAppSpecSchema }),
   z.object({ type: z.literal(CommandType.RUN_JOB), spec: runJobSpecSchema }),
+  // v4: networking + node administration
+  z.object({ type: z.literal(CommandType.CONFIGURE_FIREWALL), spec: configureFirewallSpecSchema }),
+  z.object({ type: z.literal(CommandType.PROVISION_LB), spec: provisionLbSpecSchema }),
+  z.object({ type: z.literal(CommandType.REMOVE_LB), spec: removeLbSpecSchema }),
+  z.object({ type: z.literal(CommandType.NODE_REBOOT), spec: nodeRebootSpecSchema }),
+  z.object({ type: z.literal(CommandType.DOCKER_PRUNE), spec: dockerPruneSpecSchema }),
+  z.object({ type: z.literal(CommandType.AGENT_UPDATE), spec: agentUpdateSpecSchema }),
 ]);
 export type CommandPayload = z.infer<typeof commandPayloadSchema>;
 

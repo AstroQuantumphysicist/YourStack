@@ -54,6 +54,9 @@ export const SSE_CHANNELS = {
   fn: (functionId: string) => `function:${functionId}`,
   runnerPool: (poolId: string) => `runnerpool:${poolId}`,
   cron: (cronJobId: string) => `cron:${cronJobId}`,
+  firewall: (firewallId: string) => `firewall:${firewallId}`,
+  loadBalancer: (lbId: string) => `lb:${lbId}`,
+  organization: (orgId: string) => `org:${orgId}`,
   /** Live metrics stream for any scoped target. */
   metrics: (scope: string, targetId: string) => `metrics:${scope}:${targetId}`,
 } as const;

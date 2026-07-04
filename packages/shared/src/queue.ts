@@ -19,6 +19,9 @@ export const QUEUE_NAMES = {
   RUNNER: 'yourstack.runner',
   AUTOSCALE: 'yourstack.autoscale',
   CRON: 'yourstack.cron',
+  FIREWALL: 'yourstack.firewall',
+  LOADBALANCER: 'yourstack.loadbalancer',
+  NODE_ADMIN: 'yourstack.nodeadmin',
 } as const;
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
@@ -118,3 +121,18 @@ export const cronJobSchema = z.object({
   cronJobId: z.string(),
 });
 export type CronJob = z.infer<typeof cronJobSchema>;
+
+/* ------------------------------- v4 jobs ------------------------------------ */
+
+export const firewallJobSchema = z.object({ firewallId: z.string(), action: z.enum(['apply', 'remove']) });
+export type FirewallJob = z.infer<typeof firewallJobSchema>;
+
+export const loadBalancerJobSchema = z.object({ loadBalancerId: z.string(), action: z.enum(['provision', 'remove', 'reconcile']) });
+export type LoadBalancerJob = z.infer<typeof loadBalancerJobSchema>;
+
+export const nodeAdminJobSchema = z.object({
+  nodeId: z.string(),
+  action: z.enum(['reboot', 'docker_prune', 'agent_update']),
+  version: z.string().optional(),
+});
+export type NodeAdminJob = z.infer<typeof nodeAdminJobSchema>;

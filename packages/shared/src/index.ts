@@ -11,4 +11,5 @@ export * from './schemas/pipeline.js';
 export * from './schemas/api.js';
 export * from './schemas/resources.js';
 export * from './schemas/metrics.js';
+export * from './schemas/blueprint.js';
 export * from './queue.js';

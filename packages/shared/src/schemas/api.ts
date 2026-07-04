@@ -309,3 +309,91 @@ export const updateCronJobSchema = z.object({
   schedule: z.string().min(9).max(100).optional(),
   paused: z.boolean().optional(),
 });
+
+/* ------------------------------ v4: orgs & teams ---------------------------- */
+
+export const createOrganizationSchema = z.object({
+  name: z.string().min(2).max(80),
+  slug: slugSchema.optional(),
+});
+export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
+
+export const inviteOrgMemberSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(['admin', 'member']),
+});
+
+export const createTeamSchema = z.object({
+  name: z.string().min(2).max(64),
+  slug: slugSchema.optional(),
+});
+
+export const addTeamMemberSchema = z.object({
+  userId: z.string(),
+  role: z.enum(['lead', 'member']).default('member'),
+});
+
+/** Grant a team access to a workspace at a given role. */
+export const grantWorkspaceSchema = z.object({
+  teamId: z.string(),
+  workspaceId: z.string(),
+  role: z.enum(['owner', 'admin', 'developer', 'viewer']).default('developer'),
+});
+
+/* ------------------------------- v4: firewalls ------------------------------ */
+
+export const firewallRuleInputSchema = z.object({
+  direction: z.enum(['inbound', 'outbound']).default('inbound'),
+  action: z.enum(['allow', 'deny']).default('allow'),
+  protocol: z.enum(['tcp', 'udp', 'icmp', 'any']).default('tcp'),
+  port: z.string().optional(),
+  cidr: z.string().default('0.0.0.0/0'),
+  comment: z.string().max(120).optional(),
+});
+
+export const createFirewallSchema = z.object({
+  name: z.string().min(2).max(64),
+  defaultInbound: z.enum(['allow', 'deny']).default('deny'),
+  defaultOutbound: z.enum(['allow', 'deny']).default('allow'),
+  nodeIds: z.array(z.string()).default([]),
+  rules: z.array(firewallRuleInputSchema).max(200).default([]),
+});
+export type CreateFirewallInput = z.infer<typeof createFirewallSchema>;
+
+export const updateFirewallSchema = createFirewallSchema.partial();
+
+/* ---------------------------- v4: load balancers ---------------------------- */
+
+export const createLoadBalancerSchema = z.object({
+  projectId: z.string(),
+  name: z.string().min(2).max(64),
+  listenPort: z.number().int().positive().default(80),
+  algorithm: z.enum(['round_robin', 'least_conn', 'ip_hash']).default('round_robin'),
+  nodeId: z.string().optional(),
+  region: z.string().optional(),
+  /** App ids to balance across, and/or explicit "host:port" targets. */
+  appIds: z.array(z.string()).default([]),
+  targets: z.array(z.string()).default([]),
+  domain: z.string().optional(),
+  autoHttps: z.boolean().default(false),
+  sticky: z.boolean().default(false),
+});
+export type CreateLoadBalancerInput = z.infer<typeof createLoadBalancerSchema>;
+
+/* ------------------------------ v4: node admin ------------------------------ */
+
+export const nodeActionSchema = z.object({
+  action: z.enum(['reboot', 'docker_prune', 'agent_update']),
+  version: z.string().optional(),
+});
+export type NodeActionInput = z.infer<typeof nodeActionSchema>;
+
+/* -------------------------------- v4: blueprint ----------------------------- */
+
+export const applyBlueprintSchema = z.object({
+  workspaceId: z.string(),
+  /** Raw yourstack.yaml (YAML or JSON string) OR a parsed object. */
+  blueprint: z.unknown(),
+  dryRun: z.boolean().default(false),
+});
+export type ApplyBlueprintInput = z.infer<typeof applyBlueprintSchema>;

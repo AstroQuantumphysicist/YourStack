@@ -145,3 +145,63 @@ export const runJobSpecSchema = z.object({
   registryAuth: z.string().optional(),
 });
 export type RunJobSpec = z.infer<typeof runJobSpecSchema>;
+
+/* --------------------------- v4: networking + node ops ---------------------- */
+
+export const firewallRuleSpecSchema = z.object({
+  direction: z.enum(['inbound', 'outbound']).default('inbound'),
+  action: z.enum(['allow', 'deny']).default('allow'),
+  protocol: z.enum(['tcp', 'udp', 'icmp', 'any']).default('tcp'),
+  /** Port or range, e.g. "443" or "8000-9000". Empty = any. */
+  port: z.string().optional(),
+  /** CIDR source/destination, e.g. "0.0.0.0/0" or "10.0.0.0/8". */
+  cidr: z.string().default('0.0.0.0/0'),
+  comment: z.string().optional(),
+});
+export type FirewallRuleSpec = z.infer<typeof firewallRuleSpecSchema>;
+
+/** Apply a firewall ruleset to a node (nftables/ufw under the hood). */
+export const configureFirewallSpecSchema = z.object({
+  firewallId: z.string(),
+  /** Default policy for inbound traffic not matched by a rule. */
+  defaultInbound: z.enum(['allow', 'deny']).default('deny'),
+  defaultOutbound: z.enum(['allow', 'deny']).default('allow'),
+  rules: z.array(firewallRuleSpecSchema).max(200),
+});
+export type ConfigureFirewallSpec = z.infer<typeof configureFirewallSpecSchema>;
+
+export const lbTargetSpecSchema = z.object({
+  /** Backend address, e.g. "10.0.0.5:8080" or a container name. */
+  address: z.string(),
+  weight: z.number().int().positive().default(1),
+});
+
+/** Provision a load balancer (Caddy/HAProxy) fronting a set of backends. */
+export const provisionLbSpecSchema = z.object({
+  loadBalancerId: z.string(),
+  containerName: z.string(),
+  listenPort: z.number().int().positive(),
+  algorithm: z.enum(['round_robin', 'least_conn', 'ip_hash']).default('round_robin'),
+  targets: z.array(lbTargetSpecSchema).min(1),
+  /** Optional domain + auto-HTTPS termination. */
+  domain: z.string().optional(),
+  autoHttps: z.boolean().default(false),
+  healthPath: z.string().default('/'),
+  sticky: z.boolean().default(false),
+});
+export type ProvisionLbSpec = z.infer<typeof provisionLbSpecSchema>;
+
+export const removeLbSpecSchema = z.object({ loadBalancerId: z.string(), containerName: z.string() });
+
+/** Node-administration commands (typed — never arbitrary shell). */
+export const nodeRebootSpecSchema = z.object({ delaySeconds: z.number().int().nonnegative().default(5) });
+export const dockerPruneSpecSchema = z.object({
+  images: z.boolean().default(true),
+  volumes: z.boolean().default(false),
+  buildCache: z.boolean().default(true),
+});
+export const agentUpdateSpecSchema = z.object({
+  /** Version/channel to update the agent to. */
+  version: z.string().default('latest'),
+  downloadUrl: z.string().url().optional(),
+});
