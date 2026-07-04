@@ -398,3 +398,34 @@ container to completion and reports exit code + duration back.
 API, authenticated with a personal `ys_…` token via `YOURSTACK_TOKEN` (+ `YOURSTACK_API_URL`).
 Point Claude Desktop / Cursor / Claude Code at `yourstack-mcp` to let an agent deploy and
 operate everything the token's user can. See `apps/mcp/README.md`.
+
+---
+
+## Organizations, Teams, Firewalls, Load Balancers, Blueprint (v4)
+
+### Organizations & teams
+`GET/POST /v1/organizations`, `GET /v1/organizations/:id`, `GET /v1/organizations/:id/workspaces`,
+`GET/POST /v1/organizations/:id/members`, `PATCH/DELETE /v1/organizations/:id/members/:mid`,
+`GET/POST /v1/organizations/:id/teams`, `GET/DELETE /v1/teams/:id`,
+`GET/POST /v1/teams/:id/members`, `DELETE /v1/teams/:id/members/:uid`,
+`POST /v1/teams/:id/grants` (`{workspaceId,role}`), `DELETE /v1/teams/:id/grants/:workspaceId`.
+`POST /v1/workspaces` accepts optional `organizationId` (else a personal org is created).
+**RBAC:** effective workspace role = max(platform-admin, org owner/admin, direct WorkspaceMember, team grant).
+
+### Firewalls (nftables) & load balancers (Caddy)
+`GET/POST /v1/workspaces/:wid/firewalls`, `GET/PATCH/DELETE /v1/firewalls/:id`, `POST /v1/firewalls/:id/apply`.
+`GET/POST /v1/projects/:pid/load-balancers`, `GET /v1/load-balancers/:id`, `POST /v1/load-balancers/:id/reconcile`, `DELETE /v1/load-balancers/:id`.
+
+### Node administration
+`POST /v1/nodes/:id/actions` (`{action:'reboot'|'docker_prune'|'agent_update',version?}`),
+`GET /v1/nodes/:id/commands`. New signed commands: CONFIGURE_FIREWALL, PROVISION_LB, REMOVE_LB, NODE_REBOOT, DOCKER_PRUNE, AGENT_UPDATE, RUN_JOB.
+
+### Blueprint (`yourstack.yaml`)
+`POST /v1/blueprint/apply` (`{workspaceId,blueprint,dryRun}` → `{plan,applied?}`),
+`GET /v1/projects/:pid/blueprint` (export). Also `yst apply` and the visual builder.
+
+## Deploy from GitHub to Railway
+1. Connect this GitHub repo in Railway. Add **Postgres** and **Redis** services to the project.
+2. Create three services — **api**, **worker**, **web** — each with **Root Directory = repo root** and the config-as-code file: `apps/api/railway.toml`, `apps/worker/railway.toml`, and `infra/railway/web.railway.toml` (Dockerfiles: `apps/api/Dockerfile`, `apps/worker/Dockerfile`, `infra/docker/web.Dockerfile`).
+3. Set env: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `REDIS_URL=${{Redis.REDIS_URL}}`, plus `SESSION_SECRET`, `SECRETS_ENCRYPTION_KEY`, `PUBLIC_API_URL`, `PUBLIC_WEB_URL`, `NEXT_PUBLIC_API_URL`, `ADMIN_EMAILS`. The API runs `prisma migrate deploy` on release.
+The control plane (api/worker/web + Postgres + Redis) is fully hosted by Railway; your **nodes** run the agent, and the **MCP** runs client-side via `yst mcp`.

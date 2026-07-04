@@ -82,11 +82,33 @@ nodes — every one a typed, signed command the agent runs via the Docker Engine
   a connected repo **auto-deploys**, with commit **check runs** reported back.
 - **Cron jobs** — schedule any container to run on a cron expression; runs are
   tracked with exit codes, durations, and history.
-- **MCP server** (`apps/mcp`) — connect any AI agent (Claude Desktop, Cursor,
-  Claude Code, your own) to YourStack via the [Model Context Protocol](https://modelcontextprotocol.io).
-  27 tools let an agent deploy apps, provision databases/storage/functions,
-  browse & deploy the marketplace, schedule cron, and read logs + metrics —
-  all through the same RBAC as the dashboard. See `apps/mcp/README.md`.
+- **MCP server** — connect any AI agent (Claude Desktop, Cursor, Claude Code,
+  your own) to YourStack via the [Model Context Protocol](https://modelcontextprotocol.io).
+  **29 tools** let an agent deploy apps, provision databases/storage/functions,
+  browse & deploy the marketplace, schedule cron, apply blueprints, and read
+  logs + metrics — all through the same RBAC as the dashboard. It ships **inside
+  the `yst` CLI**: run `yst login` once, then point your AI client at `yst mcp`.
+
+### Enterprise, networking & infra-as-code (v4)
+
+- **Organizations & teams** — multi-org from the ground up: an Organization is
+  the top tenant; **Teams** within an org group members and are **granted scoped
+  access to workspaces** at a chosen role. A user's effective permission is the
+  max of platform-admin, org role, direct membership, and team grants.
+- **Firewalls** — define allow/deny rules (protocol, port/range, CIDR, direction)
+  in a visual builder; applied to your nodes via nftables.
+- **Load balancers** — balance traffic across app replicas / backends (Caddy,
+  round-robin/least-conn/ip-hash, sticky sessions, optional auto-HTTPS).
+- **Visual infrastructure builder** — a drag-and-drop canvas to compose your
+  whole cloud (apps, databases, buckets, functions, cron, firewalls, LBs,
+  domains) with **two-way sync to `yourstack.yaml`** and a dry-run plan preview
+  before deploy.
+- **`yourstack.yaml`** — declare your entire project as code; `yst apply` (or the
+  builder) reconciles it into real resources.
+- **Node management** — reboot, prune Docker, and update the agent on any
+  connected node from the dashboard or `yst node …`, with full command history.
+- **`yst` CLI** — `login`, `init`, `deploy`, `logs`, `apps`, `env`, `rollback`,
+  `node`, `apply`, and `mcp`. (`yourstack` remains an alias.)
 
 The **control plane** (this repo's `api` + `worker` + Postgres + Redis) is itself
 designed to be hosted on a managed platform such as **Railway**. The **data
