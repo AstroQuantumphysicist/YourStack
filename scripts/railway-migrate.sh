@@ -19,4 +19,10 @@ if [ -z "$DATABASE_URL" ]; then
   exit 1
 fi
 
-exec pnpm --filter @yourstack/db migrate:deploy
+pnpm --filter @yourstack/db migrate:deploy
+
+# Seed the platform catalog (plans, regions, marketplace templates). This is
+# idempotent and creates NO demo/tenant data — only the catalog the product
+# needs so workspace creation (which FKs to Plan) works on a fresh database.
+echo "→ Seeding platform catalog…"
+exec pnpm --filter @yourstack/db seed

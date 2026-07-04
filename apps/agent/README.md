@@ -83,6 +83,18 @@ writes `/etc/yourstack/agent.toml`, registers the node, and installs + starts th
 systemd unit. It is idempotent — re-run it to upgrade the binary. Uninstall with
 `sudo ./scripts/uninstall.sh` (`PURGE_DATA=1` to also drop `/var/lib/yourstack`).
 
+### Podman instead of Docker
+
+Both engines speak the Docker Engine API, so the agent drives either. Pass
+`YOURSTACK_RUNTIME=podman` to the installer — it enables the rootful
+`podman.socket`, adds the agent user to the `podman` group, records
+`runtime = "podman"` in `agent.toml`, and shells out to `podman build` for image
+builds. The agent auto-discovers the Podman socket
+(`$XDG_RUNTIME_DIR/podman/podman.sock`, then `/run/podman/podman.sock`); override
+it with `YOURSTACK_ENGINE_SOCKET=unix:///path/to.sock` (or set `DOCKER_HOST`).
+Everything else — deploys, databases, functions, firewalls, metrics — is
+identical across engines.
+
 ## Security model
 
 - **Signed commands only.** Every command is delivered with an HMAC-SHA256
@@ -98,8 +110,8 @@ systemd unit. It is idempotent — re-run it to upgrade the binary. Uninstall wi
   as a shell command line.
 - **Least privilege.** Runs as the unprivileged `yourstack` user. The systemd
   unit applies `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, a
-  private `/tmp`, and a narrow `ReadWritePaths`. Docker access is granted only
-  via `docker` group membership.
+  private `/tmp`, and a narrow `ReadWritePaths`. Engine socket access is granted
+  only via `docker`/`podman` group membership.
 - **Secrets at rest.** `agent.toml` holds the agent token and HMAC key and is
   written `0600`, owned by the `yourstack` user.
 - **TLS.** All control-plane traffic uses HTTPS (rustls); container env (which

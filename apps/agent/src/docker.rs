@@ -25,6 +25,7 @@ use bollard::Docker;
 use futures_util::StreamExt;
 use tokio::sync::mpsc;
 
+use crate::config::ContainerRuntime;
 use crate::protocol::{
     DeployAppSpec, DeploySource, Framework, LABEL_APP, LABEL_DEPLOYMENT, LABEL_MANAGED,
 };
@@ -60,19 +61,34 @@ pub struct ContainerSample {
 pub struct DockerClient {
     docker: Docker,
     data_dir: PathBuf,
+    runtime: ContainerRuntime,
 }
 
 impl DockerClient {
-    /// Connect to the local Docker daemon (unix socket / Windows named pipe).
-    pub fn connect(data_dir: PathBuf) -> Result<Self> {
-        let docker = Docker::connect_with_local_defaults()
-            .context("connecting to the local Docker daemon")?;
-        Ok(DockerClient { docker, data_dir })
+    /// Connect to the local container engine. Both Docker and Podman speak the
+    /// Docker Engine API; `runtime` picks the default socket and the build CLI,
+    /// and `socket` (if set) overrides the endpoint for either.
+    pub fn connect(
+        data_dir: PathBuf,
+        runtime: ContainerRuntime,
+        socket: Option<String>,
+    ) -> Result<Self> {
+        let docker = connect_engine(runtime, socket.as_deref())?;
+        Ok(DockerClient {
+            docker,
+            data_dir,
+            runtime,
+        })
     }
 
     /// Borrow the underlying bollard client for higher-level modules (resources).
     pub(crate) fn engine(&self) -> &Docker {
         &self.docker
+    }
+
+    /// The container runtime this client drives (selects the build/prune CLI).
+    pub(crate) fn runtime(&self) -> ContainerRuntime {
+        self.runtime
     }
 
     /// The agent's data directory (build workspaces, generated sources).
@@ -351,15 +367,15 @@ impl DockerClient {
         Ok(dest)
     }
 
-    /// Build an image by shelling out to `docker build`. Streams combined output
-    /// into the returned log lines.
+    /// Build an image by shelling out to the runtime CLI (`docker`/`podman`
+    /// build — identical flags). Streams combined output into the log lines.
     pub(crate) async fn docker_build(
         &self,
         context: &std::path::Path,
         dockerfile: Option<&std::path::Path>,
         tag: &str,
     ) -> Result<Vec<String>> {
-        let mut cmd = tokio::process::Command::new("docker");
+        let mut cmd = tokio::process::Command::new(self.runtime.cli_bin());
         cmd.arg("build").arg("-t").arg(tag);
         if let Some(df) = dockerfile {
             cmd.arg("-f").arg(df);
@@ -752,6 +768,81 @@ fn split_image_tag(image: &str) -> (String, String) {
         }
     }
     (image.to_string(), "latest".to_string())
+}
+
+/// Resolve and connect to the Engine API for the configured runtime.
+///
+/// Precedence: explicit `socket` override → `DOCKER_HOST` env → runtime default
+/// (Docker's local socket/named pipe, or a discovered Podman socket).
+fn connect_engine(runtime: ContainerRuntime, socket: Option<&str>) -> Result<Docker> {
+    if let Some(s) = socket {
+        return connect_url(s);
+    }
+    // An operator-set DOCKER_HOST applies to whichever runtime is configured.
+    if std::env::var_os("DOCKER_HOST").is_some() {
+        return Docker::connect_with_defaults().context("connecting via DOCKER_HOST");
+    }
+    match runtime {
+        ContainerRuntime::Docker => {
+            Docker::connect_with_local_defaults().context("connecting to the local Docker daemon")
+        }
+        ContainerRuntime::Podman => connect_podman(),
+    }
+}
+
+/// Connect to an explicit socket path or URL (`unix://…`, absolute path, or a
+/// `tcp://`/`http://` endpoint routed through bollard's defaults).
+fn connect_url(s: &str) -> Result<Docker> {
+    #[cfg(unix)]
+    {
+        let path = s.strip_prefix("unix://").unwrap_or(s);
+        if s.starts_with("unix://") || s.starts_with('/') {
+            return Docker::connect_with_unix(path, 120, bollard::API_DEFAULT_VERSION)
+                .with_context(|| format!("connecting to socket {path}"));
+        }
+    }
+    // Non-unix endpoints (tcp/http/npipe): let bollard parse it via DOCKER_HOST.
+    std::env::set_var("DOCKER_HOST", s);
+    Docker::connect_with_defaults().with_context(|| format!("connecting to {s}"))
+}
+
+/// Discover and connect to a Podman API socket when none was specified.
+#[cfg(unix)]
+fn connect_podman() -> Result<Docker> {
+    let candidates = podman_socket_candidates();
+    for path in &candidates {
+        if std::path::Path::new(path).exists() {
+            return Docker::connect_with_unix(path, 120, bollard::API_DEFAULT_VERSION)
+                .with_context(|| format!("connecting to Podman socket {path}"));
+        }
+    }
+    bail!(
+        "no Podman API socket found (tried: {}). Start it with \
+         `systemctl --user enable --now podman.socket` (rootless) or \
+         `sudo systemctl enable --now podman.socket` (rootful), or set \
+         engine_socket / DOCKER_HOST in the agent config.",
+        candidates.join(", ")
+    )
+}
+
+#[cfg(not(unix))]
+fn connect_podman() -> Result<Docker> {
+    // On non-Unix hosts Podman exposes its socket via `podman machine`, which
+    // publishes DOCKER_HOST; fall back to bollard's defaults.
+    Docker::connect_with_defaults()
+        .context("connecting to Podman (set DOCKER_HOST, e.g. via `podman machine`)")
+}
+
+/// Default Podman socket locations, rootless (per-user) first.
+#[cfg(unix)]
+fn podman_socket_candidates() -> Vec<String> {
+    let mut v = Vec::new();
+    if let Some(dir) = std::env::var_os("XDG_RUNTIME_DIR") {
+        v.push(format!("{}/podman/podman.sock", dir.to_string_lossy()));
+    }
+    v.push("/run/podman/podman.sock".to_string());
+    v.push("/var/run/podman/podman.sock".to_string());
+    v
 }
 
 /// Decode base64 `user:pass` into bollard credentials.

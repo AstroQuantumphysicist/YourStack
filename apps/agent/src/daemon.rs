@@ -47,10 +47,14 @@ pub async fn run(config: Config) -> Result<()> {
 
     // Docker is best-effort: if the daemon is unreachable at startup we still run
     // (heartbeats report no docker version) and retry connecting each heartbeat.
-    let docker = match DockerClient::connect(data_dir.clone()) {
+    let docker = match DockerClient::connect(
+        data_dir.clone(),
+        config.runtime,
+        config.engine_socket.clone(),
+    ) {
         Ok(d) => Some(d),
         Err(e) => {
-            tracing::warn!(error = %e, "Docker unavailable at startup; will report no docker version");
+            tracing::warn!(error = %e, runtime = ?config.runtime, "container engine unavailable at startup; will report no version and retry");
             None
         }
     };

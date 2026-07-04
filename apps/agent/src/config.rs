@@ -10,6 +10,27 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+/// Container runtime the agent drives. Both speak the Docker Engine API, so the
+/// only differences are which CLI is used for image builds and where the API
+/// socket lives by default.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ContainerRuntime {
+    #[default]
+    Docker,
+    Podman,
+}
+
+impl ContainerRuntime {
+    /// The CLI binary used for image builds and build-cache pruning.
+    pub fn cli_bin(self) -> &'static str {
+        match self {
+            ContainerRuntime::Docker => "docker",
+            ContainerRuntime::Podman => "podman",
+        }
+    }
+}
+
 /// Location of the on-disk config. The daemon reads it at startup; `register`
 /// writes it after a successful join.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +55,14 @@ pub struct Config {
     /// Working directory for clones, build contexts, and generated Caddyfiles.
     #[serde(default = "default_data_dir")]
     pub data_dir: String,
+    /// Container runtime to drive: `docker` (default) or `podman`.
+    #[serde(default)]
+    pub runtime: ContainerRuntime,
+    /// Optional explicit Engine API socket/URL. Overrides `DOCKER_HOST` and the
+    /// runtime's default socket. Examples:
+    /// `unix:///run/user/1000/podman/podman.sock`, `tcp://127.0.0.1:2375`.
+    #[serde(default)]
+    pub engine_socket: Option<String>,
 }
 
 impl Default for Config {
@@ -46,6 +75,8 @@ impl Default for Config {
             region: None,
             labels: Default::default(),
             data_dir: default_data_dir(),
+            runtime: ContainerRuntime::default(),
+            engine_socket: None,
         }
     }
 }

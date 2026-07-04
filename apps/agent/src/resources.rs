@@ -1690,8 +1690,8 @@ pub async fn docker_prune(docker: &DockerClient, spec: &DockerPruneSpec) -> Resu
     }
 
     if spec.build_cache {
-        // bollard exposes no build-cache prune; the Docker CLI does. Best-effort.
-        let out = tokio::process::Command::new("docker")
+        // bollard exposes no build-cache prune; the runtime CLI does. Best-effort.
+        let out = tokio::process::Command::new(docker.runtime().cli_bin())
             .args(["builder", "prune", "-af"])
             .output()
             .await;

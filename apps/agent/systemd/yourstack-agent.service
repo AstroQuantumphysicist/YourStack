@@ -1,18 +1,19 @@
 [Unit]
 Description=YourStack node agent
 Documentation=https://yourstack.dev/docs/agent
-# The agent talks to Docker; start after the daemon is up.
-After=network-online.target docker.service
-Wants=network-online.target
-Requires=docker.service
+# The agent talks to a container engine (Docker or Podman). Start after whichever
+# is present; neither is hard-required so the unit works on either kind of host.
+After=network-online.target docker.service podman.socket
+Wants=network-online.target docker.service podman.socket
 
 [Service]
 Type=simple
 User=yourstack
 Group=yourstack
-# The yourstack user must be a member of the `docker` group to reach the socket.
-# The install script adds it: `usermod -aG docker yourstack`.
-SupplementaryGroups=docker
+# The yourstack user reaches the engine socket via its group membership, which
+# the install script grants: `usermod -aG docker|podman yourstack`. systemd
+# initializes the service's supplementary groups from the user database, so no
+# explicit SupplementaryGroups= (which would fail if the group is absent).
 
 ExecStart=/usr/local/bin/yourstack-agent run --config /etc/yourstack/agent.toml
 Restart=always
@@ -30,8 +31,8 @@ WorkingDirectory=/var/lib/yourstack
 Environment=YOURSTACK_LOG=info
 
 # --- Hardening ---------------------------------------------------------------
-# The agent needs the Docker socket and outbound network; otherwise it is locked
-# down as much as is compatible with driving Docker.
+# The agent needs the engine socket and outbound network; otherwise it is locked
+# down as much as is compatible with driving containers.
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true

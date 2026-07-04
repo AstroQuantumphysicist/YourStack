@@ -1,12 +1,16 @@
 import { PrismaClient } from '@prisma/client';
-import { generateApiToken, generateCommandKey, hashPassword } from '@yourstack/security';
 import { DEFAULT_PLAN } from '@yourstack/shared';
 
 const prisma = new PrismaClient();
 
 /**
- * Idempotent seed: default plans, a demo admin user, a demo workspace with a
- * project, an app, and a fake offline node. Safe to run repeatedly.
+ * Catalog seed — provisions ONLY the platform catalog that the product needs to
+ * function: subscription plans (referenced by every workspace's FK), the region
+ * catalog, and the marketplace templates. It creates NO demo users, workspaces,
+ * projects, apps, or nodes: all tenant data comes from real sign-ups.
+ *
+ * Safe to run repeatedly (fully idempotent) and safe to run on production —
+ * it is invoked automatically after each deploy migration.
  */
 async function main() {
   console.log('→ Seeding plans…');
@@ -37,88 +41,6 @@ async function main() {
     },
   });
 
-  console.log('→ Seeding demo user + workspace…');
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@yourstack.local';
-  const user = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: { isPlatformAdmin: true },
-    create: {
-      email: adminEmail,
-      name: 'Demo Admin',
-      isPlatformAdmin: true,
-      passwordHash: await hashPassword('yourstack-dev'),
-    },
-  });
-
-  const workspace = await prisma.workspace.upsert({
-    where: { slug: 'demo' },
-    update: {},
-    create: {
-      name: 'Demo Workspace',
-      slug: 'demo',
-      planKey: DEFAULT_PLAN.key,
-      members: {
-        create: { userId: user.id, role: 'owner' },
-      },
-    },
-  });
-
-  console.log('→ Seeding demo project + app…');
-  const project = await prisma.project.upsert({
-    where: { workspaceId_slug: { workspaceId: workspace.id, slug: 'starter' } },
-    update: {},
-    create: {
-      workspaceId: workspace.id,
-      name: 'Starter',
-      slug: 'starter',
-      description: 'A demo project to get you started.',
-    },
-  });
-
-  await prisma.app.upsert({
-    where: { projectId_slug: { projectId: project.id, slug: 'web' } },
-    update: {},
-    create: {
-      projectId: project.id,
-      name: 'web',
-      slug: 'web',
-      framework: 'nextjs',
-      repoUrl: 'https://github.com/yourstack/example-next',
-      branch: 'main',
-      installCommand: 'pnpm install --frozen-lockfile',
-      buildCommand: 'pnpm build',
-      startCommand: 'pnpm start',
-      port: 3000,
-      status: 'idle',
-    },
-  });
-
-  console.log('→ Seeding demo node (offline)…');
-  await prisma.node.upsert({
-    where: { id: 'seed-node-1' },
-    update: {},
-    create: {
-      id: 'seed-node-1',
-      workspaceId: workspace.id,
-      name: 'demo-hetzner-fsn1',
-      status: 'offline',
-      region: 'fsn1',
-      os: 'linux',
-      arch: 'x86_64',
-      commandKey: generateCommandKey(32),
-      cpuCores: 4,
-      memoryTotalMb: 8192,
-      diskTotalMb: 160_000,
-      labels: {
-        create: [
-          { key: 'provider', value: 'hetzner' },
-          { key: 'env', value: 'demo' },
-        ],
-      },
-    },
-  });
-
-  const token = generateApiToken();
   console.log('→ Seeding region catalog…');
   const regions = [
     { slug: 'fsn1', name: 'Falkenstein', country: 'Germany', flag: '🇩🇪' },
@@ -163,10 +85,7 @@ async function main() {
   }
   console.log(`  ${TEMPLATE_CATALOG.length} templates seeded.`);
 
-  console.log('\n✔ Seed complete.');
-  console.log(`  Admin user:   ${adminEmail} (password: yourstack-dev)`);
-  console.log(`  Workspace:    demo`);
-  console.log(`  Sample API token (not stored): ${token.plaintext}`);
+  console.log('\n✔ Catalog seed complete (plans, regions, templates). No demo/tenant data created.');
 }
 
 main()

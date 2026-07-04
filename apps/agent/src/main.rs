@@ -60,6 +60,13 @@ enum Command {
         /// Optional region label stored with the node.
         #[arg(long)]
         region: Option<String>,
+        /// Container runtime to drive: `docker` (default) or `podman`.
+        #[arg(long)]
+        runtime: Option<String>,
+        /// Explicit Engine API socket/URL (overrides the runtime default and
+        /// DOCKER_HOST), e.g. `unix:///run/user/1000/podman/podman.sock`.
+        #[arg(long)]
+        engine_socket: Option<String>,
     },
     /// Development mode: verbose logging, local ./agent.toml.
     Dev,
@@ -85,10 +92,22 @@ async fn main() -> Result<()> {
             join_token,
             name,
             region,
+            runtime,
+            engine_socket,
         } => {
             init_tracing(false);
             let path = cli.config.unwrap_or_else(default_config_path);
-            register(&path, &api_url, &join_token, &name, region).await
+            let runtime = parse_runtime(runtime.as_deref())?;
+            register(
+                &path,
+                &api_url,
+                &join_token,
+                &name,
+                region,
+                runtime,
+                engine_socket,
+            )
+            .await
         }
         Command::Dev => {
             init_tracing(true);
@@ -111,6 +130,17 @@ async fn main() -> Result<()> {
     }
 }
 
+/// Map an optional `--runtime` string to the config enum (default: Docker).
+fn parse_runtime(s: Option<&str>) -> Result<config::ContainerRuntime> {
+    match s.map(|v| v.trim().to_ascii_lowercase()).as_deref() {
+        None | Some("") | Some("docker") => Ok(config::ContainerRuntime::Docker),
+        Some("podman") => Ok(config::ContainerRuntime::Podman),
+        Some(other) => Err(anyhow::anyhow!(
+            "unknown --runtime '{other}' (expected 'docker' or 'podman')"
+        )),
+    }
+}
+
 /// Perform the one-time join and persist credentials.
 async fn register(
     path: &std::path::Path,
@@ -118,16 +148,25 @@ async fn register(
     join_token: &str,
     name: &str,
     region: Option<String>,
+    runtime: config::ContainerRuntime,
+    engine_socket: Option<String>,
 ) -> Result<()> {
     // Data dir determines where builds/caddy fragments live; default per-OS.
     let mut cfg = Config {
         api_url: api_url.to_string(),
         region: region.clone(),
+        runtime,
+        engine_socket,
         ..Default::default()
     };
 
-    // Collect registration telemetry (best-effort Docker version).
-    let docker = docker::DockerClient::connect(PathBuf::from(&cfg.data_dir)).ok();
+    // Collect registration telemetry (best-effort container-engine version).
+    let docker = docker::DockerClient::connect(
+        PathBuf::from(&cfg.data_dir),
+        cfg.runtime,
+        cfg.engine_socket.clone(),
+    )
+    .ok();
     let mut collector = telemetry::Collector::new();
     let telemetry = collector.register_telemetry(docker.as_ref()).await;
 
