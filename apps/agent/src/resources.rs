@@ -34,9 +34,9 @@ use serde_json::json;
 use crate::docker::DockerClient;
 use crate::protocol::{
     AgentUpdateSpec, BackupDatabaseSpec, CommandOutput, ConfigureFirewallSpec, DatabaseEngine,
-    DeployFunctionSpec, DeregisterRunnerSpec, DockerPruneSpec, FirewallDirection, FirewallProtocol,
-    FirewallRuleSpec, FunctionRuntime, FunctionSource, InvokeFunctionSpec, LbAlgorithm,
-    NodeRebootSpec, ProvisionDatabaseSpec, ProvisionLbSpec, ProvisionStorageSpec,
+    DeployFunctionSpec, DeregisterRunnerSpec, DockerPruneSpec, FirewallDirection, FirewallPolicy,
+    FirewallProtocol, FirewallRuleSpec, FunctionRuntime, FunctionSource, InvokeFunctionSpec,
+    LbAlgorithm, NodeRebootSpec, ProvisionDatabaseSpec, ProvisionLbSpec, ProvisionStorageSpec,
     RegisterRunnerSpec, RemoveDatabaseSpec, RemoveFunctionSpec, RemoveLbSpec, RemoveStorageSpec,
     RunJobSpec, ScaleAppSpec, StopDatabaseSpec, LABEL_APP, LABEL_DATABASE, LABEL_FUNCTION,
     LABEL_JOB, LABEL_LB, LABEL_MANAGED, LABEL_RUNNER, LABEL_STORAGE, RUNNER_TOKEN_PLACEHOLDER,
@@ -1324,6 +1324,7 @@ pub async fn run_job(docker: &DockerClient, spec: &RunJobSpec) -> Result<Command
 
 /// Render one nftables rule line for a firewall rule. `inbound` selects whether
 /// the CIDR matches the source (`saddr`) or destination (`daddr`) address. Pure.
+#[cfg(any(target_os = "linux", test))]
 fn render_firewall_rule(rule: &FirewallRuleSpec) -> String {
     let addr_kw = match rule.direction {
         FirewallDirection::Inbound => "saddr",
@@ -1355,14 +1356,125 @@ fn render_firewall_rule(rule: &FirewallRuleSpec) -> String {
 
 /// Convert a spec port/range (`"443"` or `"8000-9000"`) into nft syntax. A range
 /// uses a dash; nft accepts `8000-9000` for `dport`.
+#[cfg(any(target_os = "linux", test))]
 fn nft_port(port: &str) -> String {
     port.trim().to_string()
+}
+
+/// Render a PowerShell script that programs the Windows Firewall to match a
+/// firewall spec. Pure and deterministic (no process spawn) so it can be
+/// unit-tested. Uses the NetSecurity cmdlets: it removes the previous
+/// `YourStack`-group rules, sets the default inbound/outbound actions on all
+/// profiles, then adds one rule per spec entry tagged with the group.
+///
+/// Compiled on Windows and under `test` so the mapping is covered on any host.
+#[cfg(any(windows, test))]
+pub fn render_windows_firewall(spec: &ConfigureFirewallSpec) -> String {
+    let inbound = match spec.default_inbound {
+        FirewallPolicy::Allow => "Allow",
+        FirewallPolicy::Deny => "Block",
+    };
+    let outbound = match spec.default_outbound {
+        FirewallPolicy::Allow => "Allow",
+        FirewallPolicy::Deny => "Block",
+    };
+
+    let mut s = String::new();
+    s.push_str("$ErrorActionPreference = 'Stop'\n");
+    // Idempotent: drop the rules we created last time (never touches other rules).
+    s.push_str("Remove-NetFirewallRule -Group 'YourStack' -ErrorAction SilentlyContinue\n");
+    s.push_str(&format!(
+        "Set-NetFirewallProfile -All -DefaultInboundAction {inbound} -DefaultOutboundAction {outbound}\n"
+    ));
+
+    for (i, rule) in spec.rules.iter().enumerate() {
+        s.push_str(&render_windows_firewall_rule(spec, rule, i));
+        s.push('\n');
+    }
+    s
+}
+
+/// Render a single `New-NetFirewallRule` line for a rule. Windows uses
+/// `RemoteAddress` for the peer in both directions, `LocalPort` for inbound
+/// destination ports and `RemotePort` for outbound destination ports.
+#[cfg(any(windows, test))]
+fn render_windows_firewall_rule(
+    spec: &ConfigureFirewallSpec,
+    rule: &FirewallRuleSpec,
+    index: usize,
+) -> String {
+    use crate::protocol::FirewallRuleAction;
+    let direction = match rule.direction {
+        FirewallDirection::Inbound => "Inbound",
+        FirewallDirection::Outbound => "Outbound",
+    };
+    let action = match rule.action {
+        FirewallRuleAction::Allow => "Allow",
+        FirewallRuleAction::Deny => "Block",
+    };
+    let protocol = match rule.protocol {
+        FirewallProtocol::Tcp => "TCP",
+        FirewallProtocol::Udp => "UDP",
+        FirewallProtocol::Icmp => "ICMPv4",
+        FirewallProtocol::Any => "Any",
+    };
+
+    let display = format!("YourStack {} #{}", spec.firewall_id, index);
+    let mut parts = vec![
+        "New-NetFirewallRule".to_string(),
+        "-Group 'YourStack'".to_string(),
+        format!("-DisplayName '{}'", ps_escape(&display)),
+        format!("-Direction {direction}"),
+        format!("-Action {action}"),
+        format!("-Protocol {protocol}"),
+    ];
+
+    // Ports only apply to TCP/UDP.
+    if matches!(rule.protocol, FirewallProtocol::Tcp | FirewallProtocol::Udp) {
+        if let Some(port) = rule.port.as_deref().filter(|p| !p.trim().is_empty()) {
+            let flag = match rule.direction {
+                FirewallDirection::Inbound => "-LocalPort",
+                FirewallDirection::Outbound => "-RemotePort",
+            };
+            parts.push(format!("{flag} {}", ps_port(port)));
+        }
+    }
+
+    // A specific CIDR maps to RemoteAddress; the catch-all is left as default (Any).
+    if rule.cidr != "0.0.0.0/0" && !rule.cidr.trim().is_empty() {
+        parts.push(format!("-RemoteAddress '{}'", ps_escape(rule.cidr.trim())));
+    }
+
+    parts.join(" ")
+}
+
+/// Escape a value for a single-quoted PowerShell string (double the quotes).
+#[cfg(any(windows, test))]
+fn ps_escape(s: &str) -> String {
+    s.replace('\'', "''")
+}
+
+/// Render a port spec as a PowerShell `-LocalPort`/`-RemotePort` argument. A
+/// comma list becomes an array literal; a single value or range is quoted.
+#[cfg(any(windows, test))]
+fn ps_port(port: &str) -> String {
+    let port = port.trim();
+    if port.contains(',') {
+        let items: Vec<String> = port
+            .split(',')
+            .map(|p| format!("'{}'", ps_escape(p.trim())))
+            .collect();
+        format!("@({})", items.join(","))
+    } else {
+        format!("'{}'", ps_escape(port))
+    }
 }
 
 /// Render a complete nftables ruleset for a firewall spec. Pure and deterministic
 /// so it can be unit-tested without touching the kernel. Establishes an `inet`
 /// table with input/output base chains, the default policies, baseline
 /// conntrack/loopback allowances, then the per-rule verdicts.
+#[cfg(any(target_os = "linux", test))]
 pub fn render_nftables(spec: &ConfigureFirewallSpec) -> String {
     let mut s = String::new();
     // Flush our own table so re-applying is idempotent (never touches other tables).
@@ -1408,34 +1520,92 @@ pub fn render_nftables(spec: &ConfigureFirewallSpec) -> String {
     s
 }
 
-/// Apply a firewall ruleset. Renders nftables and pipes it into `nft -f -`.
-/// nftables is Linux-only: on any other OS (or if `nft` is missing) this returns
-/// a clear "firewall backend unavailable" error rather than panicking.
+/// Apply a firewall ruleset using the platform's native backend: nftables on
+/// Linux, Windows Firewall (via PowerShell's NetSecurity cmdlets) on Windows.
+/// On any other OS this returns a clear "backend unavailable" error rather than
+/// panicking.
 pub async fn configure_firewall(spec: &ConfigureFirewallSpec) -> Result<CommandOutput> {
-    let ruleset = render_nftables(spec);
-
-    if !cfg!(target_os = "linux") {
+    #[cfg(target_os = "linux")]
+    {
+        apply_nftables(&render_nftables(spec)).await?;
+        return Ok(firewall_applied_output(spec, "nftables"));
+    }
+    #[cfg(target_os = "windows")]
+    {
+        return configure_firewall_windows(spec).await;
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    {
+        let _ = spec;
         bail!(
-            "firewall backend unavailable: nftables requires Linux (this node runs {})",
+            "firewall backend unavailable: requires Linux (nftables) or Windows \
+             (Windows Firewall); this node runs {}",
             std::env::consts::OS
         );
     }
+}
 
-    apply_nftables(&ruleset).await?;
-    Ok(CommandOutput {
+/// Human-readable label for a default policy (`allow`/`deny`).
+fn policy_label(p: FirewallPolicy) -> &'static str {
+    match p {
+        FirewallPolicy::Allow => "allow",
+        FirewallPolicy::Deny => "deny",
+    }
+}
+
+/// Build the success output for an applied firewall, naming the backend used.
+fn firewall_applied_output(spec: &ConfigureFirewallSpec, backend: &str) -> CommandOutput {
+    CommandOutput {
         message: Some(format!(
-            "applied firewall {} ({} rule(s); inbound policy {}, outbound policy {})",
+            "applied firewall {} via {} ({} rule(s); default inbound {}, outbound {})",
             spec.firewall_id,
+            backend,
             spec.rules.len(),
-            spec.default_inbound.verdict(),
-            spec.default_outbound.verdict(),
+            policy_label(spec.default_inbound),
+            policy_label(spec.default_outbound),
         )),
         ..Default::default()
-    })
+    }
+}
+
+/// Configure the Windows Firewall to match `spec`, via PowerShell's NetSecurity
+/// cmdlets. Rules are tagged with the `YourStack` group so re-applying cleanly
+/// replaces the previous set; default inbound/outbound actions are set on all
+/// profiles.
+#[cfg(target_os = "windows")]
+async fn configure_firewall_windows(spec: &ConfigureFirewallSpec) -> Result<CommandOutput> {
+    let script = render_windows_firewall(spec);
+    let output = tokio::process::Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
+        ])
+        .output()
+        .await
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                anyhow!("firewall backend unavailable: `powershell` not found in PATH")
+            } else {
+                anyhow!(e).context("spawning powershell for Windows Firewall")
+            }
+        })?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!(
+            "Windows Firewall configuration failed: {}",
+            stderr.trim().replace('\n', " ")
+        );
+    }
+    Ok(firewall_applied_output(spec, "Windows Firewall"))
 }
 
 /// Pipe a ruleset into `nft -f -`. A missing `nft` binary is surfaced as
 /// "firewall backend unavailable" so the control plane can report it cleanly.
+#[cfg(target_os = "linux")]
 async fn apply_nftables(ruleset: &str) -> Result<()> {
     use tokio::io::AsyncWriteExt;
     let mut child = tokio::process::Command::new("nft")
@@ -1730,14 +1900,16 @@ pub fn agent_download_url(version: &str, download_url: Option<&str>) -> String {
     )
 }
 
-/// Download the requested agent version, sanity-check the binary, stage it next
-/// to the running executable, and request a service restart via systemd.
+/// Download the requested agent version, sanity-check the binary, swap it over
+/// the running executable, and restart the service so the new binary runs.
 ///
-/// Mechanism: the systemd unit `yourstack-agent.service` restarts the process;
-/// its `ExecStartPre` (documented in the deploy README) swaps `<exe>.new` over
-/// `<exe>` before start. If systemd is unavailable, the staged binary is left in
-/// place and the operator is told to restart manually — the agent never
-/// execs an unverified binary in-process.
+/// The swap is done in-code so it works the same on Linux (systemd), Windows
+/// (Service), and other init systems: on Unix the running exe is renamed-over
+/// directly; on Windows the locked exe is moved to `<exe>.old` first (cleaned up
+/// on next start). The restart is then requested via the platform service
+/// manager; if that is unavailable the new binary is already in place and the
+/// operator is told to restart manually. The agent never execs an unverified
+/// binary in-process.
 pub async fn agent_update(spec: &AgentUpdateSpec) -> Result<CommandOutput> {
     let url = agent_download_url(&spec.version, spec.download_url.as_deref());
 
@@ -1766,28 +1938,117 @@ pub async fn agent_update(spec: &AgentUpdateSpec) -> Result<CommandOutput> {
         let _ = std::fs::set_permissions(&staged, perms);
     }
 
-    // Request a restart; the service swaps the staged binary into place on start.
-    let restarted = tokio::process::Command::new("systemctl")
-        .args(["restart", "yourstack-agent"])
-        .status()
-        .await
-        .map(|s| s.success())
-        .unwrap_or(false);
+    // Swap the staged binary over the running executable. If this fails we do NOT
+    // restart (the old, working binary stays in place).
+    if let Err(e) = swap_agent_binary(&exe, &staged) {
+        let _ = std::fs::remove_file(&staged);
+        bail!("agent {} downloaded but install failed: {e}", spec.version);
+    }
 
+    // `how` already encodes whether the restart was triggered.
+    let (_restarted, how) = request_agent_restart().await;
     Ok(CommandOutput {
         message: Some(format!(
-            "downloaded agent {} ({} bytes) to {}; restart {}",
+            "installed agent {} ({} bytes) at {}; restart {}",
             spec.version,
             bytes.len(),
-            staged.display(),
-            if restarted {
-                "requested via systemd"
-            } else {
-                "pending (restart yourstack-agent manually)"
-            }
+            exe.display(),
+            how,
         )),
         ..Default::default()
     })
+}
+
+/// Move the staged binary into place. On Unix the running exe can be renamed
+/// over directly; on Windows it is locked, so move it aside to `<exe>.old` first
+/// (removed on the next start by `cleanup_stale_update`).
+fn swap_agent_binary(exe: &std::path::Path, staged: &std::path::Path) -> Result<()> {
+    #[cfg(windows)]
+    {
+        let backup = exe.with_extension("old");
+        let _ = std::fs::remove_file(&backup);
+        std::fs::rename(exe, &backup).context("moving current exe aside")?;
+        if let Err(e) = std::fs::rename(staged, exe) {
+            let _ = std::fs::rename(&backup, exe); // roll back
+            return Err(anyhow!(e).context("installing staged exe"));
+        }
+        Ok(())
+    }
+    #[cfg(unix)]
+    {
+        std::fs::rename(staged, exe).context("installing staged exe")
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = (exe, staged);
+        bail!("self-update is not supported on this platform")
+    }
+}
+
+/// Ask the platform service manager to restart the agent. Best-effort; returns
+/// whether a restart was triggered and a human-readable description.
+async fn request_agent_restart() -> (bool, &'static str) {
+    #[cfg(target_os = "linux")]
+    {
+        let ok = tokio::process::Command::new("systemctl")
+            .args(["restart", "yourstack-agent"])
+            .status()
+            .await
+            .map(|s| s.success())
+            .unwrap_or(false);
+        return (
+            ok,
+            if ok {
+                "requested via systemd"
+            } else {
+                "pending (run: systemctl restart yourstack-agent)"
+            },
+        );
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // The agent IS the service, so stopping it ends this process. A detached
+        // helper waits, then starts the (now-swapped) binary back up.
+        use std::os::windows::process::CommandExt;
+        const DETACHED_PROCESS: u32 = 0x0000_0008;
+        let ok = std::process::Command::new("cmd")
+            .args([
+                "/c",
+                "sc stop yourstack-agent & timeout /t 4 /nobreak >nul & sc start yourstack-agent",
+            ])
+            .creation_flags(DETACHED_PROCESS)
+            .spawn()
+            .is_ok();
+        return (
+            ok,
+            if ok {
+                "scheduled via the Windows Service manager"
+            } else {
+                "pending (restart the yourstack-agent service)"
+            },
+        );
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let ok = tokio::process::Command::new("launchctl")
+            .args(["kickstart", "-k", "system/dev.yourstack.agent"])
+            .status()
+            .await
+            .map(|s| s.success())
+            .unwrap_or(false);
+        return (
+            ok,
+            if ok {
+                "requested via launchd"
+            } else {
+                "pending (restart the agent manually)"
+            },
+        );
+    }
+    #[allow(unreachable_code)]
+    {
+        (false, "pending (restart the agent manually)")
+    }
 }
 
 /// Sanity-check a downloaded agent binary's magic bytes for the target platform.
@@ -1950,6 +2211,68 @@ mod tests {
         assert!(out.contains("ip saddr 10.0.0.0/8 tcp dport 22 accept"));
         // Outbound uses daddr and a range.
         assert!(out.contains("ip daddr 192.168.1.5/32 udp dport 8000-9000 drop"));
+    }
+
+    #[test]
+    fn windows_firewall_maps_policies_ports_and_cidrs() {
+        let spec = ConfigureFirewallSpec {
+            firewall_id: "fw3".to_string(),
+            default_inbound: FirewallPolicy::Deny,
+            default_outbound: FirewallPolicy::Allow,
+            rules: vec![
+                // Inbound HTTPS from anywhere: LocalPort, no RemoteAddress.
+                rule(
+                    FirewallDirection::Inbound,
+                    FirewallRuleAction::Allow,
+                    FirewallProtocol::Tcp,
+                    Some("443"),
+                    "0.0.0.0/0",
+                ),
+                // Inbound SSH from a subnet: LocalPort + RemoteAddress.
+                rule(
+                    FirewallDirection::Inbound,
+                    FirewallRuleAction::Allow,
+                    FirewallProtocol::Tcp,
+                    Some("22"),
+                    "10.0.0.0/8",
+                ),
+                // Outbound UDP range denied to a host: RemotePort + RemoteAddress + Block.
+                rule(
+                    FirewallDirection::Outbound,
+                    FirewallRuleAction::Deny,
+                    FirewallProtocol::Udp,
+                    Some("8000-9000"),
+                    "192.168.1.5/32",
+                ),
+            ],
+        };
+        let out = render_windows_firewall(&spec);
+        // Default policy on all profiles.
+        assert!(out.contains(
+            "Set-NetFirewallProfile -All -DefaultInboundAction Block -DefaultOutboundAction Allow"
+        ));
+        // Idempotent cleanup by group.
+        assert!(out.contains("Remove-NetFirewallRule -Group 'YourStack'"));
+        // Inbound catch-all: LocalPort, no RemoteAddress.
+        assert!(out.contains("-Direction Inbound -Action Allow -Protocol TCP -LocalPort '443'"));
+        assert!(!out.contains("-LocalPort '443' -RemoteAddress"));
+        // Inbound with subnet: LocalPort + RemoteAddress.
+        assert!(out.contains("-Protocol TCP -LocalPort '22' -RemoteAddress '10.0.0.0/8'"));
+        // Outbound: RemotePort (not LocalPort) + Block + RemoteAddress.
+        assert!(out.contains(
+            "-Direction Outbound -Action Block -Protocol UDP -RemotePort '8000-9000' -RemoteAddress '192.168.1.5/32'"
+        ));
+        // Every rule is tagged with the group for cleanup.
+        assert_eq!(
+            out.matches("-Group 'YourStack'").count(),
+            1 + spec.rules.len()
+        );
+    }
+
+    #[test]
+    fn windows_firewall_port_list_becomes_array() {
+        assert_eq!(super::ps_port("80,443"), "@('80','443')");
+        assert_eq!(super::ps_port(" 8080 "), "'8080'");
     }
 
     fn lb_spec(

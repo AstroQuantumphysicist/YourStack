@@ -95,6 +95,45 @@ it with `YOURSTACK_ENGINE_SOCKET=unix:///path/to.sock` (or set `DOCKER_HOST`).
 Everything else — deploys, databases, functions, firewalls, metrics — is
 identical across engines.
 
+## Windows install (native service)
+
+The same binary runs on Windows as a **Windows Service**. From an elevated
+PowerShell:
+
+```powershell
+$env:YOURSTACK_API_URL   = 'https://api.yourstack.dev'
+$env:YOURSTACK_JOIN_TOKEN= 'ysj_xxx'
+$env:YOURSTACK_BINARY_URL= 'https://dl.yourstack.dev/agent/latest/yourstack-agent.exe'
+.\scripts\install.ps1
+```
+
+The installer places `yourstack-agent.exe` under `C:\Program Files\YourStack`,
+writes config + state under `C:\ProgramData\YourStack`, registers the node, and
+creates the `yourstack-agent` service (auto-start at boot, restart-on-failure).
+It is idempotent — re-run it to upgrade. Uninstall with
+`.\scripts\uninstall.ps1` (`-PurgeData` to also remove config/state).
+
+The service launches the agent as `yourstack-agent run-service`, which reports
+status to the SCM and shuts down cleanly on stop. Debug interactively by running
+`yourstack-agent.exe run` in a console.
+
+**Container engine on Windows:** install **Docker Desktop** (Linux containers) or
+run **`podman machine`** and pass `YOURSTACK_RUNTIME=podman`. The agent connects
+over the Docker Engine API (named pipe / `DOCKER_HOST`) exactly as on Linux.
+
+### Cross-platform behavior
+
+| Capability | Linux | Windows |
+| --- | --- | --- |
+| Deploy/stop/restart, logs, healthchecks | ✅ Docker API | ✅ Docker API |
+| Databases, object storage, functions, cron | ✅ | ✅ |
+| Metrics / telemetry | ✅ `sysinfo` + engine | ✅ `sysinfo` + engine |
+| Firewalls | ✅ nftables | ✅ Windows Firewall (NetSecurity) |
+| Load balancers (Caddy) | ✅ | ✅ (requires `caddy` on PATH) |
+| Node reboot | ✅ `shutdown -r` | ✅ `shutdown /r` |
+| Self-update | ✅ systemd restart | ✅ service restart |
+| Run-as | systemd unit (`yourstack` user) | Windows Service (LocalSystem) |
+
 ## Security model
 
 - **Signed commands only.** Every command is delivered with an HMAC-SHA256

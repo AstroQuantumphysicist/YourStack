@@ -84,9 +84,22 @@ impl Default for Config {
 fn default_data_dir() -> String {
     if cfg!(target_os = "linux") {
         "/var/lib/yourstack".to_string()
+    } else if cfg!(windows) {
+        format!("{}\\YourStack\\data", program_data())
     } else {
         "./data".to_string()
     }
+}
+
+/// Windows `%ProgramData%` (typically `C:\ProgramData`), used for the service's
+/// config and state so they don't depend on the working directory.
+#[cfg(windows)]
+fn program_data() -> String {
+    std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string())
+}
+#[cfg(not(windows))]
+fn program_data() -> String {
+    "C:\\ProgramData".to_string()
 }
 
 impl Config {
@@ -143,6 +156,8 @@ fn restrict_permissions(_path: &Path) {
 pub fn default_config_path() -> PathBuf {
     if cfg!(target_os = "linux") {
         PathBuf::from("/etc/yourstack/agent.toml")
+    } else if cfg!(windows) {
+        PathBuf::from(format!("{}\\YourStack\\agent.toml", program_data()))
     } else {
         PathBuf::from("./agent.toml")
     }

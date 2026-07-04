@@ -17,6 +17,8 @@ mod docker;
 mod executor;
 mod protocol;
 mod resources;
+#[cfg(windows)]
+mod service_windows;
 mod signing;
 mod telemetry;
 mod util;
@@ -74,8 +76,28 @@ enum Command {
     Version,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    // Windows Service entry point. The SCM launches the binary with `run-service`
+    // and expects the dispatcher to run on the main thread, OUTSIDE any async
+    // runtime (it builds its own). Handle it before starting Tokio.
+    #[cfg(windows)]
+    {
+        if std::env::args().any(|a| a == "run-service") {
+            init_tracing(false);
+            cleanup_stale_update();
+            return service_windows::run();
+        }
+        // Interactive/other invocations: clear any leftover self-update backup.
+        cleanup_stale_update();
+    }
+
+    // Normal path: run the CLI on a multi-threaded Tokio runtime.
+    tokio::runtime::Runtime::new()
+        .context("building the Tokio runtime")?
+        .block_on(async_main())
+}
+
+async fn async_main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command.unwrap_or(Command::Run) {
@@ -199,6 +221,19 @@ async fn register(
         path.display()
     );
     Ok(())
+}
+
+/// Remove the `<exe>.old` backup left behind by a Windows self-update. On
+/// Windows the running executable can be renamed but not deleted, so the updater
+/// moves the old binary aside; we clean it up on the next start.
+#[cfg(windows)]
+fn cleanup_stale_update() {
+    if let Ok(exe) = std::env::current_exe() {
+        let backup = exe.with_extension("old");
+        if backup.exists() {
+            let _ = std::fs::remove_file(&backup);
+        }
+    }
 }
 
 /// Initialize structured logging. `verbose` bumps the default level to debug.

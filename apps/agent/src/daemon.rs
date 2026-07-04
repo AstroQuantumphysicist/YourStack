@@ -35,7 +35,18 @@ use crate::util::now_iso8601;
 /// How often the metrics reporter samples container + node resource usage.
 const METRICS_INTERVAL: Duration = Duration::from_secs(15);
 
+/// Run the daemon, installing the process signal handler (Ctrl-C / SIGTERM) as
+/// the shutdown trigger. This is the entry point for interactive / systemd runs.
 pub async fn run(config: Config) -> Result<()> {
+    let shutdown = Arc::new(Notify::new());
+    spawn_signal_handler(shutdown.clone());
+    run_with_shutdown(config, shutdown).await
+}
+
+/// Run the daemon until `shutdown` is notified. Callers that manage their own
+/// lifecycle (e.g. the Windows Service control handler) drive `shutdown`
+/// directly instead of relying on process signals.
+pub async fn run_with_shutdown(config: Config, shutdown: Arc<Notify>) -> Result<()> {
     if !config.is_registered() {
         anyhow::bail!(
             "agent is not registered; run `yourstack-agent register --api-url <url> --join-token <token> --name <name>` first"
@@ -71,9 +82,6 @@ pub async fn run(config: Config) -> Result<()> {
 
     // Discover heartbeat interval from a first heartbeat; default until then.
     let mut interval_ms: u64 = 15_000;
-
-    let shutdown = Arc::new(Notify::new());
-    spawn_signal_handler(shutdown.clone());
 
     // Background resource/node metrics reporter (best-effort; never fatal).
     spawn_metrics_reporter(
