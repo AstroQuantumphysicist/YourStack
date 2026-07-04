@@ -1,0 +1,188 @@
+# =============================================================================
+# NodeRail — local development stack (control plane).
+#
+#   docker compose -f infra/docker-compose.yml up -d          # core stack
+#   docker compose -f infra/docker-compose.yml --profile proxy up -d   # + caddy
+#   docker compose -f infra/docker-compose.yml --profile nodes up -d    # + agent
+#
+# All build contexts are the REPO ROOT ("..") because this is a pnpm workspace.
+# Config/secrets come from infra/.env (copy infra/.env.example -> infra/.env).
+# DATABASE_URL / REDIS_URL are pinned to the compose network below so they are
+# always correct regardless of what the .env file contains.
+#
+# Migrations: a dedicated one-shot `migrate` service runs `prisma migrate deploy`
+# to completion; api + worker wait for it via `service_completed_successfully`.
+# This is more robust than migrating on every replica start (no races, no
+# partial-boot on migration failure).
+# =============================================================================
+
+name: noderail
+
+x-postgres-user: &pg_user ${POSTGRES_USER:-noderail}
+x-postgres-pass: &pg_pass ${POSTGRES_PASSWORD:-noderail}
+x-postgres-db: &pg_db ${POSTGRES_DB:-noderail}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: *pg_user
+      POSTGRES_PASSWORD: *pg_pass
+      POSTGRES_DB: *pg_db
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-noderail} -d ${POSTGRES_DB:-noderail}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  # One-shot: apply Prisma migrations, then exit 0. Reuses the API image so the
+  # Prisma CLI + schema + migrations are exactly those shipped with the service.
+  migrate:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    image: noderail/api:dev
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-noderail}:${POSTGRES_PASSWORD:-noderail}@postgres:5432/${POSTGRES_DB:-noderail}?schema=public
+    command: ["pnpm", "--filter", "@noderail/db", "migrate:deploy"]
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    image: noderail/api:dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      PORT: "4000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-noderail}:${POSTGRES_PASSWORD:-noderail}@postgres:5432/${POSTGRES_DB:-noderail}?schema=public
+      REDIS_URL: redis://redis:6379
+      PUBLIC_API_URL: http://localhost:4000
+      PUBLIC_WEB_URL: http://localhost:3000
+    ports:
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    build:
+      context: ..
+      dockerfile: apps/worker/Dockerfile
+    image: noderail/worker:dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-noderail}:${POSTGRES_PASSWORD:-noderail}@postgres:5432/${POSTGRES_DB:-noderail}?schema=public
+      REDIS_URL: redis://redis:6379
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    image: noderail/web:dev
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    ports:
+      - "3000:3000"
+
+  # --- Reverse proxy that simulates the edge on a user "node" (profile: proxy) --
+  # Fronts the web + api with a single origin over http://localhost. On a real
+  # node the agent manages a Caddyfile like this to route app traffic + TLS.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["proxy"]
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # --- OPTIONAL: a dev node agent joined to this compose network (profile: nodes)
+  # Demonstrates how a bring-your-own-server agent registers against the control
+  # plane. Requires a one-time join token minted via the API/CLI (see docs).
+  # Enable with:  docker compose --profile nodes up -d agent
+  agent:
+    build:
+      context: ..
+      dockerfile: infra/docker/agent.Dockerfile
+    profiles: ["nodes"]
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODERAIL_API_URL: http://api:4000
+      # Paste a one-time join token from `noderail nodes token` (see docs).
+      NODERAIL_JOIN_TOKEN: ${NODERAIL_JOIN_TOKEN:-}
+      RUST_LOG: info
+    # The agent controls containers on its host; in this demo it talks to the
+    # host Docker daemon. Mounting the socket is a dev convenience only.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

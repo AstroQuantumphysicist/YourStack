@@ -1,0 +1,51 @@
+# Keep Docker build contexts small and reproducible.
+# The build context is the repo root; only manifests + source are needed.
+
+# Dependencies / package manager state
+**/node_modules
+.pnpm-store
+.npmrc.local
+
+# Build outputs
+**/dist
+**/build
+**/.next
+**/out
+**/.turbo
+*.tsbuildinfo
+
+# Rust agent (built separately with cargo, not in Node images)
+apps/agent/target
+**/*.rs.bk
+
+# VCS / CI
+.git
+.gitignore
+.github
+
+# Local env & secrets (NEVER bake into an image)
+.env
+.env.*
+!.env.example
+infra/.env
+
+# Test / coverage
+**/coverage
+**/.nyc_output
+**/test-results
+**/playwright-report
+
+# Editor / OS
+.DS_Store
+.idea
+.vscode
+Thumbs.db
+
+# Docs & local infra artifacts not needed at build time
+docs
+infra/caddy/data
+infra/caddy/config
+**/*.log
+tmp
+*.pid
+agent-data

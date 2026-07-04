@@ -75,9 +75,12 @@ async function main() {
 }
 
 function startHealthServer(ctx: WorkerContext): void {
+  // The worker exposes a health endpoint for Railway/Docker. Prefer WORKER_PORT,
+  // fall back to PORT. If the port is taken (e.g. running alongside the API in
+  // local `pnpm dev`), log a warning and continue — the health server is optional.
+  const port = Number(process.env.WORKER_PORT ?? ctx.config.PORT);
   import('node:http').then(({ createServer }) => {
-    const port = ctx.config.PORT;
-    createServer((req, res) => {
+    const server = createServer((req, res) => {
       if (req.url === '/health' || req.url === '/') {
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ status: 'ok', service: 'worker' }));
@@ -85,7 +88,11 @@ function startHealthServer(ctx: WorkerContext): void {
         res.writeHead(404);
         res.end();
       }
-    }).listen(port, () => logger.info(`worker health server on :${port}`));
+    });
+    server.on('error', (err) => {
+      logger.warn({ err, port }, 'worker health server unavailable (continuing without it)');
+    });
+    server.listen(port, () => logger.info(`worker health server on :${port}`));
   });
 }
 

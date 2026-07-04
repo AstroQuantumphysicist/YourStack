@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   Design tokens. Dark-first: :root is the dark theme; .light overrides it.
+   Values are raw HSL channels so Tailwind can apply <alpha-value>.
+   ========================================================================== */
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* Dark theme (default) */
+  --background: 224 44% 4%;
+  --foreground: 210 30% 96%;
+
+  --surface: 224 32% 7%;
+  --surface-muted: 223 28% 10%;
+
+  --card: 224 30% 8%;
+  --card-foreground: 210 30% 96%;
+
+  --muted: 223 22% 16%;
+  --muted-foreground: 217 15% 62%;
+
+  --border: 220 20% 18%;
+  --input: 220 20% 20%;
+  --ring: 250 90% 66%;
+
+  --primary: 250 88% 66%;
+  --primary-foreground: 250 40% 98%;
+
+  --accent: 190 92% 55%;
+  --accent-foreground: 200 60% 10%;
+
+  --success: 152 62% 46%;
+  --warning: 38 92% 56%;
+  --danger: 0 78% 62%;
+  --info: 210 90% 62%;
+}
+
+.light {
+  --background: 210 40% 98%;
+  --foreground: 224 44% 8%;
+
+  --surface: 0 0% 100%;
+  --surface-muted: 214 32% 95%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 224 44% 8%;
+
+  --muted: 214 30% 92%;
+  --muted-foreground: 220 12% 42%;
+
+  --border: 214 25% 86%;
+  --input: 214 25% 84%;
+  --ring: 250 88% 60%;
+
+  --primary: 250 84% 60%;
+  --primary-foreground: 0 0% 100%;
+
+  --accent: 190 90% 42%;
+  --accent-foreground: 0 0% 100%;
+
+  --success: 152 58% 40%;
+  --warning: 32 90% 46%;
+  --danger: 0 72% 52%;
+  --info: 210 84% 52%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+/* Ambient app background: subtle radial aurora + faint grid. */
+.app-aurora {
+  background-image:
+    radial-gradient(60rem 40rem at 12% -10%, hsl(var(--primary) / 0.14), transparent 60%),
+    radial-gradient(50rem 40rem at 100% 0%, hsl(var(--accent) / 0.1), transparent 55%);
+}
+
+.glass {
+  background-color: hsl(var(--card) / 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Thin, tasteful scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.5);
+  background-clip: content-box;
+}
+
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.text-gradient {
+  background: linear-gradient(
+    100deg,
+    hsl(var(--foreground)),
+    hsl(var(--primary)),
+    hsl(var(--accent))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.log-line {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

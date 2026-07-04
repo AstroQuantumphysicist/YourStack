@@ -1,0 +1,30 @@
+# =============================================================================
+# NodeRail worker — Railway config-as-code.
+# https://docs.railway.com/reference/config-as-code
+#
+# Service setup on Railway:
+#   * Create the "worker" service in the same project as api + Postgres + Redis.
+#   * Set the service Root Directory to the REPO ROOT (build context needs the
+#     pnpm lockfile + all workspace manifests).
+#   * Point Config-as-code at apps/worker/railway.toml (this file).
+#   * Share the DB/Redis via:
+#       DATABASE_URL = ${{Postgres.DATABASE_URL}}
+#       REDIS_URL    = ${{Redis.REDIS_URL}}
+#
+# The worker runs no HTTP server for external traffic and needs no healthcheck
+# path (BullMQ heartbeats + restart policy handle liveness). It does bind an
+# internal /health server on PORT if you want to add a healthcheck later.
+#
+# Migrations are owned by the API service (preDeployCommand) — do NOT run them
+# here to avoid two services racing the same migration.
+# =============================================================================
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/worker/Dockerfile"
+
+[deploy]
+startCommand = "node dist/index.js"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+numReplicas = 1
