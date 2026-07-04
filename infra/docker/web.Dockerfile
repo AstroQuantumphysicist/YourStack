@@ -57,8 +57,8 @@ COPY --from=build /app/apps/web/.next/standalone ./
 # Static assets are not part of the server bundle — copy them into the traced
 # app directory so the standalone server can serve them.
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
-# NOTE: apps/web has no public/ dir today. If one is added, also copy it:
-#   COPY --from=build /app/apps/web/public ./apps/web/public
+# Public assets (e.g. /install.sh, referenced by the API as ${PUBLIC_WEB_URL}/install.sh).
+COPY --from=build /app/apps/web/public ./apps/web/public
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

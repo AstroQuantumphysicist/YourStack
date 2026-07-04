@@ -88,7 +88,6 @@ export function useSSE(channel: string | null | undefined, options: UseSSEOption
       es.close();
       setStatus('closed');
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel, enabled]);
 
   return { status, lastEvent };
