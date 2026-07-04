@@ -28,11 +28,12 @@ COPY apps/api/package.json      apps/api/package.json
 COPY apps/worker/package.json   apps/worker/package.json
 COPY apps/web/package.json      apps/web/package.json
 COPY apps/cli/package.json      apps/cli/package.json
+COPY apps/mcp/package.json      apps/mcp/package.json
 COPY packages/config/package.json    packages/config/package.json
 COPY packages/db/package.json        packages/db/package.json
 COPY packages/security/package.json  packages/security/package.json
 COPY packages/shared/package.json    packages/shared/package.json
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
