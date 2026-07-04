@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * config.ts resolves the config path from os.homedir() at import time, so we
@@ -21,8 +21,7 @@ describe('config round-trip', () => {
     process.env.USERPROFILE = home;
     delete process.env.NODERAIL_API_URL;
     delete process.env.NODERAIL_TOKEN;
-    const { resetModules } = await import('vitest');
-    resetModules();
+    vi.resetModules();
   });
 
   afterEach(() => {

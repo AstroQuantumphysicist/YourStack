@@ -1,0 +1,190 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Deterministic test/build config. These are throwaway CI values, never secrets.
+  NODE_ENV: test
+  DATABASE_URL: postgresql://noderail:noderail@localhost:5432/noderail?schema=public
+  REDIS_URL: redis://localhost:6379
+  SESSION_SECRET: ci-session-secret-least-16-chars
+  SECRETS_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  ADMIN_EMAILS: admin@noderail.local
+  PUBLIC_API_URL: http://localhost:4000
+  PUBLIC_WEB_URL: http://localhost:3000
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Node monorepo: install, generate Prisma client, typecheck, lint, test, build.
+  # Postgres + Redis service containers back tests that need them.
+  # ---------------------------------------------------------------------------
+  node:
+    name: Node (lint / typecheck / test / build)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: noderail
+          POSTGRES_PASSWORD: noderail
+          POSTGRES_DB: noderail
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U noderail -d noderail"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @noderail/db generate
+
+      - name: Apply migrations (validates schema against Postgres)
+        run: pnpm --filter @noderail/db migrate:deploy
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Lint
+        run: pnpm -r lint
+
+      - name: Build
+        run: pnpm -r build
+
+      - name: Test
+        run: pnpm -r test
+
+  # ---------------------------------------------------------------------------
+  # Prisma migration drift: schema and committed migrations must be in sync.
+  # ---------------------------------------------------------------------------
+  migrations:
+    name: Prisma migration drift
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: noderail
+          POSTGRES_PASSWORD: noderail
+          POSTGRES_DB: noderail
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U noderail -d noderail"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Fails (exit 2) if schema.prisma has changes not captured by migrations.
+      - name: Check for un-migrated schema changes
+        working-directory: packages/db
+        run: >-
+          pnpm exec prisma migrate diff
+          --from-migrations prisma/migrations
+          --to-schema-datamodel prisma/schema.prisma
+          --shadow-database-url "$DATABASE_URL"
+          --exit-code
+        env:
+          DATABASE_URL: postgresql://noderail:noderail@localhost:5432/noderail?schema=public
+
+  # ---------------------------------------------------------------------------
+  # Rust node agent: format check, build, test.
+  # ---------------------------------------------------------------------------
+  agent:
+    name: Rust agent (build / test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/agent
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/agent/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('apps/agent/Cargo.lock', 'apps/agent/Cargo.toml') }}
+          restore-keys: cargo-${{ runner.os }}-
+      - name: Format check
+        run: cargo fmt --all --check
+        continue-on-error: true
+      - name: Build
+        run: cargo build --locked --release
+      - name: Test
+        run: cargo test --locked
+
+  # ---------------------------------------------------------------------------
+  # Docker image build check. Heavy, so it only gates informationally.
+  # ---------------------------------------------------------------------------
+  docker:
+    name: Docker build (${{ matrix.image.name }})
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: api, dockerfile: apps/api/Dockerfile }
+          - { name: worker, dockerfile: apps/worker/Dockerfile }
+          - { name: web, dockerfile: infra/docker/web.Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build ${{ matrix.image.name }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          push: false
+          load: false
+          cache-from: type=gha,scope=${{ matrix.image.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}
