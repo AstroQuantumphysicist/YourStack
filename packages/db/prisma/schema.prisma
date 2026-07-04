@@ -1,0 +1,696 @@
+// NodeRail control-plane database schema.
+// Postgres + Prisma. Status columns use native Prisma enums whose values match
+// the string unions in @noderail/shared/enums.ts exactly.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === --------------------------------- Enums ------------------------------------ ===
+
+enum WorkspaceRole {
+  owner
+  admin
+  developer
+  viewer
+}
+
+enum WorkspaceStatus {
+  active
+  suspended
+}
+
+enum AppStatus {
+  idle
+  building
+  deploying
+  running
+  failed
+  stopped
+}
+
+enum NodeStatus {
+  online
+  degraded
+  offline
+  draining
+}
+
+enum DeploymentStatus {
+  queued
+  building
+  deploying
+  running
+  failed
+  stopped
+  rolled_back
+  superseded
+}
+
+enum PipelineRunStatus {
+  queued
+  running
+  succeeded
+  failed
+  canceled
+}
+
+enum StageStatus {
+  pending
+  running
+  succeeded
+  failed
+  skipped
+}
+
+enum CommandType {
+  DEPLOY_APP
+  STOP_APP
+  RESTART_APP
+  REMOVE_APP
+  STREAM_LOGS
+  HEALTH_CHECK
+  CONFIGURE_DOMAIN
+  ROLLBACK_DEPLOYMENT
+}
+
+enum CommandStatus {
+  queued
+  accepted
+  running
+  succeeded
+  failed
+  timed_out
+}
+
+enum AppFramework {
+  nextjs
+  node
+  python
+  dockerfile
+  static
+}
+
+enum DeploymentStrategy {
+  basic_replace
+  rolling
+}
+
+enum DomainStatus {
+  pending
+  verifying
+  verified
+  active
+  failed
+}
+
+enum SecretScope {
+  project
+  app
+  environment
+}
+
+enum EnvironmentType {
+  production
+  preview
+  development
+}
+
+enum LogStream {
+  build
+  runtime
+  system
+}
+
+enum LogSeverity {
+  debug
+  info
+  warn
+  error
+}
+
+// === --------------------------------- Identity --------------------------------- ===
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String?
+  avatarUrl       String?
+  passwordHash    String?
+  isPlatformAdmin Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  oauthAccounts OAuthAccount[]
+  sessions      Session[]
+  memberships   WorkspaceMember[]
+  apiTokens     ApiToken[]
+  auditLogs     AuditLog[]
+
+  @@index([email])
+}
+
+model OAuthAccount {
+  id             String   @id @default(cuid())
+  userId         String
+  provider       String // "github"
+  providerUserId String
+  accessToken    String? // encrypted at rest
+  refreshToken   String?
+  scope          String?
+  username       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// === -------------------------------- Workspaces -------------------------------- ===
+
+model Plan {
+  key                  String   @id
+  name                 String
+  maxNodes             Int
+  maxApps              Int
+  maxDeploymentsPerDay Int
+  logRetentionDays     Int
+  priceCents           Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  workspaces Workspace[]
+}
+
+model Workspace {
+  id        String          @id @default(cuid())
+  name      String
+  slug      String          @unique
+  status    WorkspaceStatus @default(active)
+  planKey   String          @default("dev")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  deletedAt DateTime?
+
+  plan         Plan              @relation(fields: [planKey], references: [key])
+  members      WorkspaceMember[]
+  projects     Project[]
+  nodes        Node[]
+  joinTokens   NodeJoinToken[]
+  gitRepos     GitRepository[]
+  auditLogs    AuditLog[]
+  usageRecords UsageRecord[]
+  apiTokens    ApiToken[]
+
+  @@index([slug])
+  @@index([status])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(developer)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model UsageRecord {
+  id          String   @id @default(cuid())
+  workspaceId String
+  metric      String // "deployments" | "build_minutes" | ...
+  quantity    Int      @default(1)
+  day         String // YYYY-MM-DD for daily rollups
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, metric, day])
+  @@index([workspaceId, day])
+}
+
+// === --------------------------------- Projects --------------------------------- ===
+
+model Project {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  slug        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  apps      App[]
+  secrets   Secret[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+}
+
+model App {
+  id                  String             @id @default(cuid())
+  projectId           String
+  name                String
+  slug                String
+  status              AppStatus          @default(idle)
+  framework           AppFramework?
+  repoUrl             String?
+  gitRepositoryId     String?
+  branch              String             @default("main")
+  installCommand      String?
+  buildCommand        String?
+  startCommand        String?
+  port                Int                @default(3000)
+  cpu                 Float              @default(0.5)
+  memoryMb            Int                @default(512)
+  deploymentStrategy  DeploymentStrategy @default(basic_replace)
+  healthcheckPath     String             @default("/")
+  nodeId              String?
+  currentDeploymentId String?            @unique
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deletedAt           DateTime?
+
+  project           Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  gitRepository     GitRepository?   @relation(fields: [gitRepositoryId], references: [id], onDelete: SetNull)
+  node              Node?            @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+  currentDeployment Deployment?      @relation("CurrentDeployment", fields: [currentDeploymentId], references: [id], onDelete: SetNull)
+  environments      AppEnvironment[]
+  deployments       Deployment[]     @relation("AppDeployments")
+  secrets           Secret[]
+  domains           Domain[]
+  pipelineRuns      PipelineRun[]
+  runtimeLogs       RuntimeLog[]
+
+  @@unique([projectId, slug])
+  @@index([projectId])
+  @@index([nodeId])
+  @@index([status])
+}
+
+model AppEnvironment {
+  id        String          @id @default(cuid())
+  appId     String
+  name      String
+  type      EnvironmentType @default(production)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  app     App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  secrets Secret[]
+
+  @@unique([appId, name])
+  @@index([appId])
+}
+
+// === ---------------------------------- Secrets --------------------------------- ===
+
+model Secret {
+  id            String      @id @default(cuid())
+  scope         SecretScope
+  key           String
+  // AES-256-GCM ciphertext (v1:iv:tag:ct). Never store or return plaintext.
+  ciphertext    String
+  lastFour      String?
+  projectId     String?
+  appId         String?
+  environmentId String?
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  project     Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  app         App?            @relation(fields: [appId], references: [id], onDelete: Cascade)
+  environment AppEnvironment? @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  @@unique([scope, projectId, appId, environmentId, key])
+  @@index([projectId])
+  @@index([appId])
+  @@index([environmentId])
+}
+
+// === ----------------------------------- Nodes ---------------------------------- ===
+
+model Node {
+  id              String     @id @default(cuid())
+  workspaceId     String
+  name            String
+  status          NodeStatus @default(offline)
+  region          String?
+  os              String?
+  arch            String?
+  kernel          String?
+  agentVersion    String?
+  dockerVersion   String?
+  publicIp        String?
+  // HMAC key (hex) used to sign commands destined for this node.
+  commandKey      String
+  // SHA-256 hash of the long-lived agent token.
+  agentTokenHash  String?    @unique
+  cpuCores        Int?
+  cpuUsagePercent Float?
+  memoryTotalMb   Int?
+  memoryUsedMb    Int?
+  diskTotalMb     Int?
+  diskUsedMb      Int?
+  disabled        Boolean    @default(false)
+  lastHeartbeatAt DateTime?
+  registeredAt    DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  labels      NodeLabel[]
+  heartbeats  NodeHeartbeat[]
+  commands    NodeCommand[]
+  apps        App[]
+  deployments Deployment[]
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([lastHeartbeatAt])
+}
+
+model NodeLabel {
+  id     String @id @default(cuid())
+  nodeId String
+  key    String
+  value  String
+
+  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, key])
+  @@index([nodeId])
+}
+
+model NodeJoinToken {
+  id          String    @id @default(cuid())
+  workspaceId String
+  tokenHash   String    @unique
+  label       String?
+  region      String?
+  createdById String?
+  expiresAt   DateTime
+  usedAt      DateTime?
+  usedByNode  String?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([expiresAt])
+}
+
+model NodeHeartbeat {
+  id              String   @id @default(cuid())
+  nodeId          String
+  cpuUsagePercent Float
+  memoryUsedMb    Int
+  diskUsedMb      Int
+  runningApps     Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId, createdAt])
+}
+
+model NodeCommand {
+  id           String        @id @default(cuid())
+  nodeId       String
+  type         CommandType
+  status       CommandStatus @default(queued)
+  // Signed command envelope payload (JSON) delivered to the agent.
+  payload      Json
+  signature    String
+  timeoutMs    Int           @default(300000)
+  deploymentId String?
+  appId        String?
+  output       Json?
+  error        String?
+  issuedAt     DateTime      @default(now())
+  acceptedAt   DateTime?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime      @default(now())
+
+  node       Node        @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  deployment Deployment? @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
+
+  @@index([nodeId, status])
+  @@index([deploymentId])
+  @@index([status, issuedAt])
+}
+
+// === ------------------------------- Deployments -------------------------------- ===
+
+model Deployment {
+  id            String             @id @default(cuid())
+  appId         String
+  version       Int
+  status        DeploymentStatus   @default(queued)
+  nodeId        String?
+  imageTag      String?
+  imageDigest   String?
+  containerId   String?
+  containerName String?
+  ref           String?
+  commitSha     String?
+  commitMessage String?
+  reason        String?
+  strategy      DeploymentStrategy @default(basic_replace)
+  healthy       Boolean?
+  hostPort      Int?
+  // Snapshot of the resolved deploy spec (for rollback re-issue).
+  specSnapshot  Json?
+  triggeredById String?
+  triggeredBy   String? // "manual" | "webhook" | "cli" | email
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  app           App             @relation("AppDeployments", fields: [appId], references: [id], onDelete: Cascade)
+  node          Node?           @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+  currentForApp App?            @relation("CurrentDeployment")
+  logs          DeploymentLog[]
+  pipelineRun   PipelineRun?
+  commands      NodeCommand[]
+
+  @@unique([appId, version])
+  @@index([appId, createdAt])
+  @@index([status])
+  @@index([nodeId])
+}
+
+model DeploymentLog {
+  id           String      @id @default(cuid())
+  deploymentId String
+  stream       LogStream   @default(build)
+  severity     LogSeverity @default(info)
+  message      String
+  seq          Int         @default(0)
+  createdAt    DateTime    @default(now())
+
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  @@index([deploymentId, seq])
+  @@index([deploymentId, createdAt])
+}
+
+model RuntimeLog {
+  id        String      @id @default(cuid())
+  appId     String
+  nodeId    String?
+  severity  LogSeverity @default(info)
+  message   String
+  createdAt DateTime    @default(now())
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@index([appId, createdAt])
+  @@index([severity])
+}
+
+// === --------------------------------- Pipelines -------------------------------- ===
+
+model PipelineRun {
+  id            String            @id @default(cuid())
+  appId         String
+  deploymentId  String?           @unique
+  status        PipelineRunStatus @default(queued)
+  trigger       String // "push" | "pull_request" | "manual"
+  ref           String?
+  commitSha     String?
+  commitMessage String?
+  prNumber      Int?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  app        App             @relation(fields: [appId], references: [id], onDelete: Cascade)
+  deployment Deployment?     @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
+  stages     PipelineStage[]
+
+  @@index([appId, createdAt])
+  @@index([status])
+}
+
+model PipelineStage {
+  id         String      @id @default(cuid())
+  runId      String
+  name       String // checkout | install | test | build | package | deploy | healthcheck | finalize
+  status     StageStatus @default(pending)
+  order      Int
+  exitCode   Int?
+  startedAt  DateTime?
+  finishedAt DateTime?
+  createdAt  DateTime    @default(now())
+
+  run PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, name])
+  @@index([runId, order])
+}
+
+// === --------------------------------- Git / CI --------------------------------- ===
+
+model GitRepository {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  provider      String   @default("github")
+  externalId    String
+  owner         String
+  name          String
+  fullName      String
+  defaultBranch String   @default("main")
+  private       Boolean  @default(true)
+  installToken  String? // encrypted; used to clone private repos
+  webhookId     String?
+  webhookActive Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  apps      App[]
+  webhooks  GitWebhook[]
+
+  @@unique([workspaceId, provider, externalId])
+  @@index([workspaceId])
+  @@index([fullName])
+}
+
+model GitWebhook {
+  id           String   @id @default(cuid())
+  repositoryId String
+  event        String
+  deliveryId   String   @unique
+  action       String?
+  ref          String?
+  commitSha    String?
+  payload      Json
+  processed    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  repository GitRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId, createdAt])
+  @@index([processed])
+}
+
+// === ---------------------------------- Domains --------------------------------- ===
+
+model Domain {
+  id                String       @id @default(cuid())
+  appId             String
+  hostname          String       @unique
+  status            DomainStatus @default(pending)
+  verificationToken String
+  dnsTarget         String
+  autoHttps         Boolean      @default(true)
+  isPreview         Boolean      @default(false)
+  lastCheckedAt     DateTime?
+  verifiedAt        DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@index([appId])
+  @@index([status])
+}
+
+// === ----------------------------------- Audit ---------------------------------- ===
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  actorId     String?
+  actorEmail  String?
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User?      @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([action])
+  @@index([actorId])
+}
+
+// === --------------------------------- API tokens ------------------------------- ===
+
+model ApiToken {
+  id          String    @id @default(cuid())
+  userId      String
+  workspaceId String?
+  name        String
+  tokenHash   String    @unique
+  lastFour    String
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([workspaceId])
+}
