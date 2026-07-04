@@ -274,3 +274,38 @@ export const createRegionSchema = z.object({
   flag: z.string().max(8).optional(),
 });
 export type CreateRegionInput = z.infer<typeof createRegionSchema>;
+
+/* -------------------------- Marketplace / cron (v3) ------------------------- */
+
+/** Deploy a marketplace template into a project. */
+export const deployTemplateSchema = z.object({
+  templateSlug: z.string(),
+  projectId: z.string(),
+  name: z.string().min(2).max(64).optional(),
+  nodeId: z.string().optional(),
+  region: z.string().optional(),
+  /** Override template defaults for exposed variables. */
+  variables: z.record(z.string(), z.string()).default({}),
+});
+export type DeployTemplateInput = z.infer<typeof deployTemplateSchema>;
+
+/** Register a scheduled container job (cron). */
+export const createCronJobSchema = z.object({
+  projectId: z.string(),
+  name: z.string().min(2).max(64),
+  /** Standard 5-field cron expression. */
+  schedule: z.string().min(9).max(100),
+  image: z.string().min(1),
+  command: z.string().optional(),
+  nodeId: z.string().optional(),
+  region: z.string().optional(),
+  cpu: z.number().positive().max(32).default(0.5),
+  memoryMb: z.number().int().positive().max(65_536).default(512),
+  timeoutSeconds: z.number().int().positive().max(86_400).default(600),
+});
+export type CreateCronJobInput = z.infer<typeof createCronJobSchema>;
+
+export const updateCronJobSchema = z.object({
+  schedule: z.string().min(9).max(100).optional(),
+  paused: z.boolean().optional(),
+});

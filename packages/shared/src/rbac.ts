@@ -73,6 +73,12 @@ export const Permission = {
   SCALING_WRITE: 'scaling:write',
   METRICS_VIEW: 'metrics:view',
   REGION_VIEW: 'region:view',
+  // v3
+  TEMPLATE_VIEW: 'template:view',
+  TEMPLATE_DEPLOY: 'template:deploy',
+  CRON_VIEW: 'cron:view',
+  CRON_WRITE: 'cron:write',
+  GITHUB_APP_MANAGE: 'github_app:manage',
 } as const;
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
@@ -96,6 +102,8 @@ const VIEWER_PERMISSIONS: Permission[] = [
   Permission.SCALING_VIEW,
   Permission.METRICS_VIEW,
   Permission.REGION_VIEW,
+  Permission.TEMPLATE_VIEW,
+  Permission.CRON_VIEW,
 ];
 
 const DEVELOPER_PERMISSIONS: Permission[] = [
@@ -127,6 +135,9 @@ const DEVELOPER_PERMISSIONS: Permission[] = [
   Permission.FUNCTION_INVOKE,
   Permission.RUNNER_WRITE,
   Permission.SCALING_WRITE,
+  Permission.TEMPLATE_DEPLOY,
+  Permission.CRON_WRITE,
+  Permission.GITHUB_APP_MANAGE,
 ];
 
 const ADMIN_PERMISSIONS: Permission[] = [

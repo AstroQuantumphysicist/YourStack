@@ -131,6 +131,38 @@ async function main() {
     await prisma.region.upsert({ where: { slug: r.slug }, update: {}, create: r });
   }
 
+  console.log('→ Seeding marketplace templates…');
+  const { TEMPLATE_CATALOG } = await import('./templates.js');
+  for (const t of TEMPLATE_CATALOG) {
+    await prisma.template.upsert({
+      where: { slug: t.slug },
+      update: {
+        name: t.name,
+        category: t.category,
+        kind: t.kind,
+        description: t.description,
+        icon: t.icon,
+        image: t.image,
+        tags: t.tags,
+        popularity: t.popularity,
+        spec: t.spec as never,
+      },
+      create: {
+        slug: t.slug,
+        name: t.name,
+        category: t.category,
+        kind: t.kind,
+        description: t.description,
+        icon: t.icon,
+        image: t.image,
+        tags: t.tags,
+        popularity: t.popularity,
+        spec: t.spec as never,
+      },
+    });
+  }
+  console.log(`  ${TEMPLATE_CATALOG.length} templates seeded.`);
+
   console.log('\n✔ Seed complete.');
   console.log(`  Admin user:   ${adminEmail} (password: yourstack-dev)`);
   console.log(`  Workspace:    demo`);

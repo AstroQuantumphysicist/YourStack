@@ -140,6 +140,8 @@ export const CommandType = {
   REGISTER_RUNNER: 'REGISTER_RUNNER',
   DEREGISTER_RUNNER: 'DEREGISTER_RUNNER',
   SCALE_APP: 'SCALE_APP',
+  // v3: scheduled jobs run a container to completion.
+  RUN_JOB: 'RUN_JOB',
 } as const;
 export type CommandType = (typeof CommandType)[keyof typeof CommandType];
 
@@ -287,3 +289,49 @@ export const MetricScope = {
   FUNCTION: 'function',
 } as const;
 export type MetricScope = (typeof MetricScope)[keyof typeof MetricScope];
+
+/* ----------------------------- v3: marketplace ------------------------------ */
+
+/** Template marketplace categories — "host everything" one-click. */
+export const TemplateCategory = {
+  DATABASE: 'database',
+  CACHE: 'cache',
+  QUEUE: 'queue',
+  SEARCH: 'search',
+  CMS: 'cms',
+  ANALYTICS: 'analytics',
+  AUTOMATION: 'automation',
+  DEVTOOLS: 'devtools',
+  MONITORING: 'monitoring',
+  STORAGE: 'storage',
+  AI: 'ai',
+  WEBSITE: 'website',
+  PRODUCTIVITY: 'productivity',
+  GAME: 'game',
+  OTHER: 'other',
+} as const;
+export type TemplateCategory = (typeof TemplateCategory)[keyof typeof TemplateCategory];
+
+/** What kind of resource a template provisions. */
+export const TemplateKind = {
+  APP: 'app', // a container/service (arbitrary image)
+  DATABASE: 'database',
+  FUNCTION: 'function',
+  STACK: 'stack', // multiple services deployed together
+} as const;
+export type TemplateKind = (typeof TemplateKind)[keyof typeof TemplateKind];
+
+export const CronJobStatus = {
+  ACTIVE: 'active',
+  PAUSED: 'paused',
+  RUNNING: 'running',
+  FAILED: 'failed',
+} as const;
+export type CronJobStatus = (typeof CronJobStatus)[keyof typeof CronJobStatus];
+
+/** GitHub App installation account type. */
+export const GithubAccountType = {
+  USER: 'User',
+  ORGANIZATION: 'Organization',
+} as const;
+export type GithubAccountType = (typeof GithubAccountType)[keyof typeof GithubAccountType];

@@ -18,6 +18,7 @@ export const QUEUE_NAMES = {
   FUNCTION: 'yourstack.function',
   RUNNER: 'yourstack.runner',
   AUTOSCALE: 'yourstack.autoscale',
+  CRON: 'yourstack.cron',
 } as const;
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
@@ -111,3 +112,9 @@ export const autoscaleJobSchema = z.object({
   appId: z.string(),
 });
 export type AutoscaleJob = z.infer<typeof autoscaleJobSchema>;
+
+/** Fire a cron job (repeatable per-cron schedule → one container run). */
+export const cronJobSchema = z.object({
+  cronJobId: z.string(),
+});
+export type CronJob = z.infer<typeof cronJobSchema>;

@@ -14,6 +14,7 @@ import {
   registerRunnerSpecSchema,
   deregisterRunnerSpecSchema,
   scaleAppSpecSchema,
+  runJobSpecSchema,
 } from './resources.js';
 
 /**
@@ -170,6 +171,7 @@ export const commandPayloadSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(CommandType.REGISTER_RUNNER), spec: registerRunnerSpecSchema }),
   z.object({ type: z.literal(CommandType.DEREGISTER_RUNNER), spec: deregisterRunnerSpecSchema }),
   z.object({ type: z.literal(CommandType.SCALE_APP), spec: scaleAppSpecSchema }),
+  z.object({ type: z.literal(CommandType.RUN_JOB), spec: runJobSpecSchema }),
 ]);
 export type CommandPayload = z.infer<typeof commandPayloadSchema>;
 

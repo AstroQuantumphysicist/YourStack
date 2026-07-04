@@ -128,3 +128,20 @@ export const scaleAppSpecSchema = z.object({
   resources: resourceSpecSchema,
 });
 export type ScaleAppSpec = z.infer<typeof scaleAppSpecSchema>;
+
+/* ----------------------------- Scheduled jobs (v3) -------------------------- */
+
+/** Run a container to completion (cron job / one-off task). */
+export const runJobSpecSchema = z.object({
+  jobId: z.string(),
+  runId: z.string(),
+  containerName: z.string(),
+  image: z.string().min(1),
+  command: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).default({}),
+  resources: resourceSpecSchema,
+  /** Kill the job if it runs longer than this. */
+  timeoutMs: z.number().int().positive().default(600_000),
+  registryAuth: z.string().optional(),
+});
+export type RunJobSpec = z.infer<typeof runJobSpecSchema>;

@@ -89,6 +89,7 @@ enum CommandType {
   REGISTER_RUNNER
   DEREGISTER_RUNNER
   SCALE_APP
+  RUN_JOB
 }
 
 enum CommandStatus {
@@ -225,16 +226,17 @@ model Workspace {
   updatedAt DateTime        @updatedAt
   deletedAt DateTime?
 
-  plan         Plan              @relation(fields: [planKey], references: [key])
-  members      WorkspaceMember[]
-  projects     Project[]
-  nodes        Node[]
-  joinTokens   NodeJoinToken[]
-  gitRepos     GitRepository[]
-  auditLogs    AuditLog[]
-  usageRecords UsageRecord[]
-  apiTokens    ApiToken[]
-  runnerPools  RunnerPool[]
+  plan           Plan                 @relation(fields: [planKey], references: [key])
+  members        WorkspaceMember[]
+  projects       Project[]
+  nodes          Node[]
+  joinTokens     NodeJoinToken[]
+  gitRepos       GitRepository[]
+  auditLogs      AuditLog[]
+  usageRecords   UsageRecord[]
+  apiTokens      ApiToken[]
+  runnerPools    RunnerPool[]
+  githubInstalls GithubInstallation[]
 
   @@index([slug])
   @@index([status])
@@ -287,6 +289,7 @@ model Project {
   databases ManagedDatabase[]
   buckets   StorageBucket[]
   functions ServerlessFunction[]
+  cronJobs  CronJob[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId])
@@ -416,6 +419,7 @@ model Node {
   buckets     StorageBucket[]
   functions   ServerlessFunction[]
   runners     Runner[]
+  cronJobs    CronJob[]
 
   @@index([workspaceId])
   @@index([status])
@@ -964,4 +968,103 @@ model ResourceMetric {
   @@unique([scope, targetId, kind, instance, bucketTs])
   @@index([scope, targetId, kind, bucketTs])
   @@index([bucketTs])
+}
+
+// === v3: GitHub App, Template marketplace, Cron jobs ===
+
+enum CronJobStatus {
+  active
+  paused
+  running
+  failed
+}
+
+/// A GitHub App installation into a user account or org, enabling autodeploy.
+model GithubInstallation {
+  id                  String    @id @default(cuid())
+  workspaceId         String
+  installationId      String    @unique
+  accountLogin        String
+  accountType         String // "User" | "Organization"
+  accountId           String?
+  repositorySelection String    @default("all") // "all" | "selected"
+  repositories        String[] // full_names when selection = selected
+  installedById       String?
+  suspendedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([accountLogin])
+}
+
+/// A one-click marketplace template (global catalog). Provisions an app,
+/// database, function, or a multi-service stack from a declarative spec.
+model Template {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  category    String
+  kind        String // app | database | function | stack
+  description String
+  icon        String?
+  image       String? // primary container image (for app/service templates)
+  tags        String[]
+  popularity  Int      @default(0)
+  // Declarative provisioning spec: ports, env, variables, resources, volumes,
+  // or a list of services for a stack. Shape validated in the API.
+  spec        Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([popularity])
+}
+
+/// A scheduled container job (cron).
+model CronJob {
+  id             String        @id @default(cuid())
+  projectId      String
+  nodeId         String?
+  name           String
+  schedule       String // 5-field cron expression
+  image          String
+  command        String?
+  status         CronJobStatus @default(active)
+  region         String?
+  cpu            Float         @default(0.5)
+  memoryMb       Int           @default(512)
+  timeoutSeconds Int           @default(600)
+  // AES-256-GCM ciphertext of the job's env (JSON).
+  envCipher      String?
+  lastRunAt      DateTime?
+  lastRunStatus  String?
+  nextRunAt      DateTime?
+  createdById    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  project Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  node    Node?     @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+  runs    CronRun[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model CronRun {
+  id         String    @id @default(cuid())
+  cronJobId  String
+  status     String // running | success | failed | timeout
+  exitCode   Int?
+  durationMs Int?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  cronJob CronJob @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
+
+  @@index([cronJobId, startedAt])
 }

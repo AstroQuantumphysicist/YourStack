@@ -40,6 +40,15 @@ const baseSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().optional(),
   GITHUB_WEBHOOK_SECRET: z.string().optional(),
 
+  // GitHub App (install into an org/account → autodeploy). Optional; when set,
+  // enables installation tokens, check runs, and app-level webhooks.
+  GITHUB_APP_ID: z.string().optional(),
+  GITHUB_APP_SLUG: z.string().optional(),
+  GITHUB_APP_CLIENT_ID: z.string().optional(),
+  GITHUB_APP_CLIENT_SECRET: z.string().optional(),
+  GITHUB_APP_PRIVATE_KEY: z.string().optional(), // PEM (may be base64-encoded)
+  GITHUB_APP_WEBHOOK_SECRET: z.string().optional(),
+
   PUBLIC_API_URL: z.string().url().default('http://localhost:4000'),
   PUBLIC_WEB_URL: z.string().url().default('http://localhost:3000'),
   BASE_PREVIEW_DOMAIN: z.string().default('preview.yourstack.local'),
@@ -63,6 +72,8 @@ export interface AppConfig extends RawConfig {
   /** GitHub OAuth is fully configured. */
   githubConfigured: boolean;
   githubWebhookConfigured: boolean;
+  /** GitHub App (install → autodeploy) is fully configured. */
+  githubAppConfigured: boolean;
 }
 
 let cached: AppConfig | null = null;
@@ -95,6 +106,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     isTest: c.NODE_ENV === 'test',
     githubConfigured: Boolean(c.GITHUB_CLIENT_ID && c.GITHUB_CLIENT_SECRET),
     githubWebhookConfigured: Boolean(c.GITHUB_WEBHOOK_SECRET),
+    githubAppConfigured: Boolean(c.GITHUB_APP_ID && c.GITHUB_APP_PRIVATE_KEY && c.GITHUB_APP_SLUG),
   };
   return cached;
 }

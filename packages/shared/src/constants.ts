@@ -53,6 +53,7 @@ export const SSE_CHANNELS = {
   bucket: (bucketId: string) => `bucket:${bucketId}`,
   fn: (functionId: string) => `function:${functionId}`,
   runnerPool: (poolId: string) => `runnerpool:${poolId}`,
+  cron: (cronJobId: string) => `cron:${cronJobId}`,
   /** Live metrics stream for any scoped target. */
   metrics: (scope: string, targetId: string) => `metrics:${scope}:${targetId}`,
 } as const;

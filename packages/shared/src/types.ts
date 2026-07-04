@@ -330,3 +330,52 @@ export interface ScalingPolicyDTO {
   cooldownSeconds: number;
   updatedAt: string;
 }
+
+/* ------------------------------ Marketplace (v3) ---------------------------- */
+
+export interface TemplateVariableDTO {
+  key: string;
+  label: string;
+  default: string | null;
+  required: boolean;
+  secret: boolean;
+}
+
+export interface TemplateDTO {
+  slug: string;
+  name: string;
+  category: string;
+  kind: string;
+  description: string;
+  icon: string | null;
+  image: string | null;
+  tags: string[];
+  popularity: number;
+  variables: TemplateVariableDTO[];
+}
+
+export interface CronJobDTO {
+  id: string;
+  projectId: string;
+  name: string;
+  schedule: string;
+  image: string;
+  command: string | null;
+  status: string;
+  nodeId: string | null;
+  region: string | null;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  nextRunAt: string | null;
+  createdAt: string;
+}
+
+export interface GithubInstallationDTO {
+  id: string;
+  installationId: string;
+  accountLogin: string;
+  accountType: string;
+  repositorySelection: string;
+  repositoryCount: number;
+  createdAt: string;
+}
