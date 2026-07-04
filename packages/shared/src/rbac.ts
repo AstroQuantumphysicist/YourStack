@@ -56,6 +56,23 @@ export const Permission = {
   TOKEN_REVOKE: 'token:revoke',
   // Audit
   AUDIT_VIEW: 'audit:view',
+  // Managed resources (v2)
+  DATA_VIEW: 'data:view',
+  DATA_WRITE: 'data:write',
+  DATA_DELETE: 'data:delete',
+  STORAGE_VIEW: 'storage:view',
+  STORAGE_WRITE: 'storage:write',
+  STORAGE_DELETE: 'storage:delete',
+  FUNCTION_VIEW: 'function:view',
+  FUNCTION_WRITE: 'function:write',
+  FUNCTION_DELETE: 'function:delete',
+  FUNCTION_INVOKE: 'function:invoke',
+  RUNNER_VIEW: 'runner:view',
+  RUNNER_WRITE: 'runner:write',
+  SCALING_VIEW: 'scaling:view',
+  SCALING_WRITE: 'scaling:write',
+  METRICS_VIEW: 'metrics:view',
+  REGION_VIEW: 'region:view',
 } as const;
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
@@ -72,6 +89,13 @@ const VIEWER_PERMISSIONS: Permission[] = [
   Permission.LOG_VIEW,
   Permission.REPO_VIEW,
   Permission.PIPELINE_VIEW,
+  Permission.DATA_VIEW,
+  Permission.STORAGE_VIEW,
+  Permission.FUNCTION_VIEW,
+  Permission.RUNNER_VIEW,
+  Permission.SCALING_VIEW,
+  Permission.METRICS_VIEW,
+  Permission.REGION_VIEW,
 ];
 
 const DEVELOPER_PERMISSIONS: Permission[] = [
@@ -94,6 +118,15 @@ const DEVELOPER_PERMISSIONS: Permission[] = [
   Permission.PIPELINE_TRIGGER,
   Permission.TOKEN_VIEW,
   Permission.TOKEN_CREATE,
+  Permission.DATA_WRITE,
+  Permission.DATA_DELETE,
+  Permission.STORAGE_WRITE,
+  Permission.STORAGE_DELETE,
+  Permission.FUNCTION_WRITE,
+  Permission.FUNCTION_DELETE,
+  Permission.FUNCTION_INVOKE,
+  Permission.RUNNER_WRITE,
+  Permission.SCALING_WRITE,
 ];
 
 const ADMIN_PERMISSIONS: Permission[] = [

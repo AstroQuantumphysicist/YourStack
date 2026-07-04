@@ -49,6 +49,12 @@ export const SSE_CHANNELS = {
   node: (nodeId: string) => `node:${nodeId}`,
   workspace: (workspaceId: string) => `workspace:${workspaceId}`,
   pipeline: (runId: string) => `pipeline:${runId}`,
+  database: (databaseId: string) => `database:${databaseId}`,
+  bucket: (bucketId: string) => `bucket:${bucketId}`,
+  fn: (functionId: string) => `function:${functionId}`,
+  runnerPool: (poolId: string) => `runnerpool:${poolId}`,
+  /** Live metrics stream for any scoped target. */
+  metrics: (scope: string, targetId: string) => `metrics:${scope}:${targetId}`,
 } as const;
 
 /** Secret redaction placeholder. */

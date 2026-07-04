@@ -205,3 +205,72 @@ export const createApiTokenSchema = z.object({
   expiresInDays: z.number().int().positive().max(365).optional(),
 });
 export type CreateApiTokenInput = z.infer<typeof createApiTokenSchema>;
+
+/* --------------------------- Managed resources (v2) ------------------------- */
+
+export const createDatabaseSchema = z.object({
+  projectId: z.string(),
+  name: z.string().min(2).max(64),
+  engine: z.enum(['postgres', 'mysql', 'redis', 'mongodb']),
+  version: z.string().default('16'),
+  nodeId: z.string().optional(),
+  region: z.string().optional(),
+  storageMb: z.number().int().positive().max(1_048_576).default(10_240),
+  cpu: z.number().positive().max(64).default(1),
+  memoryMb: z.number().int().positive().max(262_144).default(1024),
+});
+export type CreateDatabaseInput = z.infer<typeof createDatabaseSchema>;
+
+export const createBucketSchema = z.object({
+  projectId: z.string(),
+  name: slugSchema,
+  nodeId: z.string().optional(),
+  region: z.string().optional(),
+  isPublic: z.boolean().default(false),
+  quotaMb: z.number().int().positive().max(10_485_760).default(51_200),
+});
+export type CreateBucketInput = z.infer<typeof createBucketSchema>;
+
+export const createFunctionSchema = z.object({
+  projectId: z.string(),
+  name: z.string().min(2).max(64),
+  runtime: z.enum(['node20', 'python311', 'go122', 'bun1']),
+  handler: z.string().default('index.handler'),
+  nodeId: z.string().optional(),
+  region: z.string().optional(),
+  memoryMb: z.number().int().positive().max(4096).default(256),
+  timeoutMs: z.number().int().positive().max(900_000).default(30_000),
+  minInstances: z.number().int().nonnegative().max(50).default(0),
+  code: z.string().optional(),
+  repoUrl: z.string().url().optional(),
+  branch: z.string().optional(),
+});
+export type CreateFunctionInput = z.infer<typeof createFunctionSchema>;
+
+export const createRunnerPoolSchema = z.object({
+  name: z.string().min(2).max(64),
+  githubScope: z.string().min(1), // "owner" or "owner/repo"
+  labels: z.array(z.string()).default(['yourstack', 'self-hosted']),
+  minRunners: z.number().int().nonnegative().default(0),
+  maxRunners: z.number().int().positive().max(100).default(5),
+  nodeId: z.string().optional(),
+});
+export type CreateRunnerPoolInput = z.infer<typeof createRunnerPoolSchema>;
+
+export const updateScalingPolicySchema = z.object({
+  enabled: z.boolean(),
+  minReplicas: z.number().int().nonnegative().max(100).default(1),
+  maxReplicas: z.number().int().positive().max(100).default(3),
+  metric: z.enum(['cpu', 'memory', 'rps', 'latency']).default('cpu'),
+  targetValue: z.number().positive(),
+  cooldownSeconds: z.number().int().positive().max(3600).default(120),
+});
+export type UpdateScalingPolicyInput = z.infer<typeof updateScalingPolicySchema>;
+
+export const createRegionSchema = z.object({
+  slug: slugSchema,
+  name: z.string().min(2).max(64),
+  country: z.string().max(64).optional(),
+  flag: z.string().max(8).optional(),
+});
+export type CreateRegionInput = z.infer<typeof createRegionSchema>;

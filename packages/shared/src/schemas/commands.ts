@@ -1,6 +1,20 @@
 import { z } from 'zod';
 import { CommandType } from '../enums.js';
 import { resourceSpecSchema } from './common.js';
+import {
+  provisionDatabaseSpecSchema,
+  stopDatabaseSpecSchema,
+  removeDatabaseSpecSchema,
+  backupDatabaseSpecSchema,
+  provisionStorageSpecSchema,
+  removeStorageSpecSchema,
+  deployFunctionSpecSchema,
+  invokeFunctionSpecSchema,
+  removeFunctionSpecSchema,
+  registerRunnerSpecSchema,
+  deregisterRunnerSpecSchema,
+  scaleAppSpecSchema,
+} from './resources.js';
 
 /**
  * Node command protocol. The control plane enqueues commands; the agent polls,
@@ -143,6 +157,19 @@ export const commandPayloadSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal(CommandType.HEALTH_CHECK), spec: healthCheckSpecSchema }),
   z.object({ type: z.literal(CommandType.CONFIGURE_DOMAIN), spec: configureDomainSpecSchema }),
   z.object({ type: z.literal(CommandType.ROLLBACK_DEPLOYMENT), spec: rollbackDeploymentSpecSchema }),
+  // Managed resources (v2)
+  z.object({ type: z.literal(CommandType.PROVISION_DATABASE), spec: provisionDatabaseSpecSchema }),
+  z.object({ type: z.literal(CommandType.STOP_DATABASE), spec: stopDatabaseSpecSchema }),
+  z.object({ type: z.literal(CommandType.REMOVE_DATABASE), spec: removeDatabaseSpecSchema }),
+  z.object({ type: z.literal(CommandType.BACKUP_DATABASE), spec: backupDatabaseSpecSchema }),
+  z.object({ type: z.literal(CommandType.PROVISION_STORAGE), spec: provisionStorageSpecSchema }),
+  z.object({ type: z.literal(CommandType.REMOVE_STORAGE), spec: removeStorageSpecSchema }),
+  z.object({ type: z.literal(CommandType.DEPLOY_FUNCTION), spec: deployFunctionSpecSchema }),
+  z.object({ type: z.literal(CommandType.INVOKE_FUNCTION), spec: invokeFunctionSpecSchema }),
+  z.object({ type: z.literal(CommandType.REMOVE_FUNCTION), spec: removeFunctionSpecSchema }),
+  z.object({ type: z.literal(CommandType.REGISTER_RUNNER), spec: registerRunnerSpecSchema }),
+  z.object({ type: z.literal(CommandType.DEREGISTER_RUNNER), spec: deregisterRunnerSpecSchema }),
+  z.object({ type: z.literal(CommandType.SCALE_APP), spec: scaleAppSpecSchema }),
 ]);
 export type CommandPayload = z.infer<typeof commandPayloadSchema>;
 

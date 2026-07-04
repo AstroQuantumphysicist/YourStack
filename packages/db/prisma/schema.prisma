@@ -222,6 +222,7 @@ model Workspace {
   auditLogs    AuditLog[]
   usageRecords UsageRecord[]
   apiTokens    ApiToken[]
+  runnerPools  RunnerPool[]
 
   @@index([slug])
   @@index([status])
@@ -268,9 +269,12 @@ model Project {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   apps      App[]
   secrets   Secret[]
+  databases ManagedDatabase[]
+  buckets   StorageBucket[]
+  functions ServerlessFunction[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId])
@@ -310,6 +314,7 @@ model App {
   domains           Domain[]
   pipelineRuns      PipelineRun[]
   runtimeLogs       RuntimeLog[]
+  scalingPolicy     ScalingPolicy?
 
   @@unique([projectId, slug])
   @@index([projectId])
@@ -389,12 +394,16 @@ model Node {
   updatedAt       DateTime   @updatedAt
   deletedAt       DateTime?
 
-  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace   Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   labels      NodeLabel[]
   heartbeats  NodeHeartbeat[]
   commands    NodeCommand[]
   apps        App[]
   deployments Deployment[]
+  databases   ManagedDatabase[]
+  buckets     StorageBucket[]
+  functions   ServerlessFunction[]
+  runners     Runner[]
 
   @@index([workspaceId])
   @@index([status])
@@ -693,4 +702,254 @@ model ApiToken {
 
   @@index([userId])
   @@index([workspaceId])
+}
+
+// === Managed resources (v2): Regions, Databases, Storage, Functions, Runners, Scaling, Metrics ===
+
+enum DatabaseEngine {
+  postgres
+  mysql
+  redis
+  mongodb
+}
+
+enum DatabaseStatus {
+  provisioning
+  running
+  stopped
+  backing_up
+  failed
+}
+
+enum BucketStatus {
+  provisioning
+  active
+  failed
+}
+
+enum FunctionRuntime {
+  node20
+  python311
+  go122
+  bun1
+}
+
+enum FunctionStatus {
+  idle
+  deploying
+  active
+  failed
+}
+
+enum RunnerStatus {
+  registering
+  idle
+  busy
+  offline
+}
+
+enum ScalingMetric {
+  cpu
+  memory
+  rps
+  latency
+}
+
+enum MetricScope {
+  app
+  node
+  database
+  function
+}
+
+/// Global region catalog. Nodes reference a region by slug (Node.region).
+model Region {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  country   String?
+  flag      String?
+  createdAt DateTime @default(now())
+
+  @@index([slug])
+}
+
+/// A one-click managed database running as a container on a user node.
+model ManagedDatabase {
+  id             String         @id @default(cuid())
+  projectId      String
+  nodeId         String?
+  name           String
+  engine         DatabaseEngine
+  version        String         @default("16")
+  status         DatabaseStatus @default(provisioning)
+  region         String?
+  host           String?
+  port           Int?
+  containerName  String?
+  containerId    String?
+  username       String         @default("yourstack")
+  // AES-256-GCM ciphertext of the DB password; revealed only via explicit endpoint.
+  passwordCipher String?
+  // AES-256-GCM ciphertext of the full connection string.
+  connCipher     String?
+  storageMb      Int            @default(10240)
+  cpu            Float          @default(1)
+  memoryMb       Int            @default(1024)
+  lastBackupAt   DateTime?
+  createdById    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  node    Node?   @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([nodeId])
+  @@index([status])
+}
+
+/// A one-click S3-compatible object-storage bucket (MinIO) on a user node.
+model StorageBucket {
+  id            String       @id @default(cuid())
+  projectId     String
+  nodeId        String?
+  name          String
+  status        BucketStatus @default(provisioning)
+  region        String?
+  endpoint      String?
+  containerName String?
+  isPublic      Boolean      @default(false)
+  accessKey     String?
+  secretCipher  String?
+  quotaMb       Int          @default(51200)
+  usedMb        Int          @default(0)
+  objectCount   Int          @default(0)
+  createdById   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  node    Node?   @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, name])
+  @@index([nodeId])
+}
+
+/// A serverless function deployed on a user node (scale-to-zero capable).
+model ServerlessFunction {
+  id            String          @id @default(cuid())
+  projectId     String
+  nodeId        String?
+  name          String
+  runtime       FunctionRuntime
+  status        FunctionStatus  @default(idle)
+  handler       String          @default("index.handler")
+  region        String?
+  url           String?
+  containerName String?
+  memoryMb      Int             @default(256)
+  timeoutMs     Int             @default(30000)
+  minInstances  Int             @default(0)
+  repoUrl       String?
+  branch        String?
+  createdById   String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+
+  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  node        Node?                @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+  invocations FunctionInvocation[]
+
+  @@unique([projectId, name])
+  @@index([nodeId])
+  @@index([status])
+}
+
+model FunctionInvocation {
+  id         String   @id @default(cuid())
+  functionId String
+  status     String // "success" | "error" | "timeout"
+  durationMs Int
+  statusCode Int?
+  createdAt  DateTime @default(now())
+
+  function ServerlessFunction @relation(fields: [functionId], references: [id], onDelete: Cascade)
+
+  @@index([functionId, createdAt])
+}
+
+/// A pool of self-hosted GitHub Actions runners (YourStack CI on user nodes).
+model RunnerPool {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  githubScope String
+  labels      String[]
+  minRunners  Int       @default(0)
+  maxRunners  Int       @default(5)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  runners   Runner[]
+
+  @@index([workspaceId])
+}
+
+model Runner {
+  id            String       @id @default(cuid())
+  poolId        String
+  nodeId        String?
+  status        RunnerStatus @default(registering)
+  containerName String?
+  currentJob    String?
+  lastSeenAt    DateTime?
+  createdAt     DateTime     @default(now())
+
+  pool RunnerPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  node Node?      @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+
+  @@index([poolId, status])
+  @@index([nodeId])
+}
+
+/// Autoscaling policy for an app (one-to-one).
+model ScalingPolicy {
+  id              String        @id @default(cuid())
+  appId           String        @unique
+  enabled         Boolean       @default(false)
+  minReplicas     Int           @default(1)
+  maxReplicas     Int           @default(3)
+  metric          ScalingMetric @default(cpu)
+  targetValue     Float         @default(70)
+  currentReplicas Int           @default(1)
+  cooldownSeconds Int           @default(120)
+  lastScaledAt    DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  app App @relation(fields: [appId], references: [id], onDelete: Cascade)
+}
+
+/// Downsampled time-series metric points (RAM/CPU/RPS/latency/…) reported by agents.
+model ResourceMetric {
+  id        String      @id @default(cuid())
+  scope     MetricScope
+  targetId  String
+  kind      String
+  value     Float
+  instance  String?
+  nodeId    String?
+  bucketTs  DateTime // rounded to the aggregation step
+  createdAt DateTime    @default(now())
+
+  @@unique([scope, targetId, kind, instance, bucketTs])
+  @@index([scope, targetId, kind, bucketTs])
+  @@index([bucketTs])
 }

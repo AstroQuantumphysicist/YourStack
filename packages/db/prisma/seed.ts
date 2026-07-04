@@ -119,6 +119,18 @@ async function main() {
   });
 
   const token = generateApiToken();
+  console.log('→ Seeding region catalog…');
+  const regions = [
+    { slug: 'fsn1', name: 'Falkenstein', country: 'Germany', flag: '🇩🇪' },
+    { slug: 'ash', name: 'Ashburn', country: 'United States', flag: '🇺🇸' },
+    { slug: 'sin', name: 'Singapore', country: 'Singapore', flag: '🇸🇬' },
+    { slug: 'lhr', name: 'London', country: 'United Kingdom', flag: '🇬🇧' },
+    { slug: 'syd', name: 'Sydney', country: 'Australia', flag: '🇦🇺' },
+  ];
+  for (const r of regions) {
+    await prisma.region.upsert({ where: { slug: r.slug }, update: {}, create: r });
+  }
+
   console.log('\n✔ Seed complete.');
   console.log(`  Admin user:   ${adminEmail} (password: yourstack-dev)`);
   console.log(`  Workspace:    demo`);

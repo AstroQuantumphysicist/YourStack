@@ -227,4 +227,106 @@ export interface WorkspaceStatsDTO {
   deployments: number;
   runningApps: number;
   deploymentsToday: number;
+  databases: number;
+  buckets: number;
+  functions: number;
+  runners: number;
+}
+
+/* --------------------------- Managed resources (v2) ------------------------- */
+
+export interface RegionDTO {
+  id: string;
+  slug: string;
+  name: string;
+  country: string | null;
+  flag: string | null;
+  nodeCount: number;
+  latencyMs: number | null;
+}
+
+export interface DatabaseDTO {
+  id: string;
+  projectId: string;
+  name: string;
+  engine: string;
+  version: string;
+  status: string;
+  nodeId: string | null;
+  region: string | null;
+  host: string | null;
+  port: number | null;
+  /** Connection string is only returned once at creation and via an explicit reveal. */
+  storageMb: number;
+  cpu: number;
+  memoryMb: number;
+  createdAt: string;
+}
+
+export interface BucketDTO {
+  id: string;
+  projectId: string;
+  name: string;
+  status: string;
+  nodeId: string | null;
+  region: string | null;
+  endpoint: string | null;
+  isPublic: boolean;
+  quotaMb: number;
+  usedMb: number;
+  objectCount: number;
+  createdAt: string;
+}
+
+export interface FunctionDTO {
+  id: string;
+  projectId: string;
+  name: string;
+  runtime: string;
+  status: string;
+  handler: string;
+  nodeId: string | null;
+  region: string | null;
+  url: string | null;
+  memoryMb: number;
+  timeoutMs: number;
+  minInstances: number;
+  invocations24h: number;
+  createdAt: string;
+}
+
+export interface RunnerPoolDTO {
+  id: string;
+  workspaceId: string;
+  name: string;
+  githubScope: string;
+  labels: string[];
+  minRunners: number;
+  maxRunners: number;
+  activeRunners: number;
+  busyRunners: number;
+  createdAt: string;
+}
+
+export interface RunnerDTO {
+  id: string;
+  poolId: string;
+  nodeId: string | null;
+  status: string;
+  currentJob: string | null;
+  lastSeenAt: string | null;
+  createdAt: string;
+}
+
+export interface ScalingPolicyDTO {
+  id: string;
+  appId: string;
+  enabled: boolean;
+  minReplicas: number;
+  maxReplicas: number;
+  metric: string;
+  targetValue: number;
+  currentReplicas: number;
+  cooldownSeconds: number;
+  updatedAt: string;
 }

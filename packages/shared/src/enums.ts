@@ -127,6 +127,19 @@ export const CommandType = {
   HEALTH_CHECK: 'HEALTH_CHECK',
   CONFIGURE_DOMAIN: 'CONFIGURE_DOMAIN',
   ROLLBACK_DEPLOYMENT: 'ROLLBACK_DEPLOYMENT',
+  // Managed resources
+  PROVISION_DATABASE: 'PROVISION_DATABASE',
+  STOP_DATABASE: 'STOP_DATABASE',
+  REMOVE_DATABASE: 'REMOVE_DATABASE',
+  BACKUP_DATABASE: 'BACKUP_DATABASE',
+  PROVISION_STORAGE: 'PROVISION_STORAGE',
+  REMOVE_STORAGE: 'REMOVE_STORAGE',
+  DEPLOY_FUNCTION: 'DEPLOY_FUNCTION',
+  INVOKE_FUNCTION: 'INVOKE_FUNCTION',
+  REMOVE_FUNCTION: 'REMOVE_FUNCTION',
+  REGISTER_RUNNER: 'REGISTER_RUNNER',
+  DEREGISTER_RUNNER: 'DEREGISTER_RUNNER',
+  SCALE_APP: 'SCALE_APP',
 } as const;
 export type CommandType = (typeof CommandType)[keyof typeof CommandType];
 
@@ -188,3 +201,89 @@ export const EnvironmentType = {
   DEVELOPMENT: 'development',
 } as const;
 export type EnvironmentType = (typeof EnvironmentType)[keyof typeof EnvironmentType];
+
+/* ------------------------- Managed resources (v2) --------------------------- */
+
+/** Databases users provision with a click ("Data" in the product UI). */
+export const DatabaseEngine = {
+  POSTGRES: 'postgres',
+  MYSQL: 'mysql',
+  REDIS: 'redis',
+  MONGODB: 'mongodb',
+} as const;
+export type DatabaseEngine = (typeof DatabaseEngine)[keyof typeof DatabaseEngine];
+
+export const DatabaseStatus = {
+  PROVISIONING: 'provisioning',
+  RUNNING: 'running',
+  STOPPED: 'stopped',
+  BACKING_UP: 'backing_up',
+  FAILED: 'failed',
+} as const;
+export type DatabaseStatus = (typeof DatabaseStatus)[keyof typeof DatabaseStatus];
+
+/** S3-compatible object storage ("Buckets" in the product UI). */
+export const BucketStatus = {
+  PROVISIONING: 'provisioning',
+  ACTIVE: 'active',
+  FAILED: 'failed',
+} as const;
+export type BucketStatus = (typeof BucketStatus)[keyof typeof BucketStatus];
+
+/** Serverless functions ("Functions"). */
+export const FunctionRuntime = {
+  NODE20: 'node20',
+  PYTHON311: 'python311',
+  GO122: 'go122',
+  BUN1: 'bun1',
+} as const;
+export type FunctionRuntime = (typeof FunctionRuntime)[keyof typeof FunctionRuntime];
+
+export const FunctionStatus = {
+  IDLE: 'idle',
+  DEPLOYING: 'deploying',
+  ACTIVE: 'active',
+  FAILED: 'failed',
+} as const;
+export type FunctionStatus = (typeof FunctionStatus)[keyof typeof FunctionStatus];
+
+/** Self-hosted CI runner pools (YourStack runs GitHub Actions jobs on user nodes). */
+export const RunnerStatus = {
+  REGISTERING: 'registering',
+  IDLE: 'idle',
+  BUSY: 'busy',
+  OFFLINE: 'offline',
+} as const;
+export type RunnerStatus = (typeof RunnerStatus)[keyof typeof RunnerStatus];
+
+/** Autoscaling ("Scale"). */
+export const ScalingMetric = {
+  CPU: 'cpu',
+  MEMORY: 'memory',
+  RPS: 'rps',
+  LATENCY: 'latency',
+} as const;
+export type ScalingMetric = (typeof ScalingMetric)[keyof typeof ScalingMetric];
+
+/** Time-series metric kinds reported by the agent per container/app/node. */
+export const MetricKind = {
+  CPU_PERCENT: 'cpu_percent',
+  MEM_MB: 'mem_mb',
+  MEM_PERCENT: 'mem_percent',
+  RPS: 'rps',
+  LATENCY_MS: 'latency_ms',
+  NET_RX_KB: 'net_rx_kb',
+  NET_TX_KB: 'net_tx_kb',
+  DISK_MB: 'disk_mb',
+  REPLICAS: 'replicas',
+} as const;
+export type MetricKind = (typeof MetricKind)[keyof typeof MetricKind];
+
+/** What a metric series is scoped to. */
+export const MetricScope = {
+  APP: 'app',
+  NODE: 'node',
+  DATABASE: 'database',
+  FUNCTION: 'function',
+} as const;
+export type MetricScope = (typeof MetricScope)[keyof typeof MetricScope];
