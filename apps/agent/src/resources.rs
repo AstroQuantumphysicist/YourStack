@@ -18,9 +18,10 @@ use std::time::{Duration, Instant};
 use anyhow::{anyhow, bail, Context, Result};
 use base64::Engine as _;
 use bollard::container::{
-    Config, CreateContainerOptions, ListContainersOptions, LogOutput, RemoveContainerOptions,
-    StartContainerOptions,
+    Config, CreateContainerOptions, ListContainersOptions, LogOutput, LogsOptions,
+    RemoveContainerOptions, StartContainerOptions, WaitContainerOptions,
 };
+use bollard::errors::Error as BollardError;
 use bollard::exec::{CreateExecOptions, StartExecResults};
 use bollard::models::{
     ContainerSummary, HostConfig, PortBinding, RestartPolicy, RestartPolicyNameEnum,
@@ -34,8 +35,9 @@ use crate::protocol::{
     BackupDatabaseSpec, CommandOutput, DatabaseEngine, DeployFunctionSpec, DeregisterRunnerSpec,
     FunctionRuntime, FunctionSource, InvokeFunctionSpec, ProvisionDatabaseSpec,
     ProvisionStorageSpec, RegisterRunnerSpec, RemoveDatabaseSpec, RemoveFunctionSpec,
-    RemoveStorageSpec, ScaleAppSpec, StopDatabaseSpec, LABEL_APP, LABEL_DATABASE, LABEL_FUNCTION,
-    LABEL_MANAGED, LABEL_RUNNER, LABEL_STORAGE, RUNNER_TOKEN_PLACEHOLDER,
+    RemoveStorageSpec, RunJobSpec, ScaleAppSpec, StopDatabaseSpec, LABEL_APP, LABEL_DATABASE,
+    LABEL_FUNCTION, LABEL_JOB, LABEL_MANAGED, LABEL_RUNNER, LABEL_STORAGE,
+    RUNNER_TOKEN_PLACEHOLDER,
 };
 
 /* ------------------------------ run primitive ------------------------------ */
@@ -1174,9 +1176,167 @@ pub async fn scale_app(docker: &DockerClient, spec: &ScaleAppSpec) -> Result<Com
     })
 }
 
+/* ------------------------------ scheduled jobs ----------------------------- */
+
+/// Keep only the last `n` non-empty lines of `logs`, joined by newlines. Pure.
+fn last_n_lines(logs: &str, n: usize) -> String {
+    let lines: Vec<&str> = logs.lines().filter(|l| !l.trim().is_empty()).collect();
+    let start = lines.len().saturating_sub(n);
+    lines[start..].join("\n")
+}
+
+/// Collect the tail of a container's combined stdout+stderr (best-effort).
+async fn job_log_tail(docker: &DockerClient, container: &str, lines: usize) -> String {
+    let opts = LogsOptions::<String> {
+        stdout: true,
+        stderr: true,
+        follow: false,
+        tail: lines.to_string(),
+        timestamps: false,
+        ..Default::default()
+    };
+    let mut stream = docker.engine().logs(container, Some(opts));
+    let mut out = String::new();
+    while let Some(item) = stream.next().await {
+        if let Ok(msg) = item {
+            let bytes = match msg {
+                LogOutput::StdOut { message }
+                | LogOutput::StdErr { message }
+                | LogOutput::Console { message }
+                | LogOutput::StdIn { message } => message,
+            };
+            out.push_str(&String::from_utf8_lossy(&bytes));
+        }
+    }
+    last_n_lines(&out, lines)
+}
+
+/// Append the log tail to a message when non-empty (`": <tail>"`).
+fn with_tail(tail: &str) -> String {
+    if tail.is_empty() {
+        String::new()
+    } else {
+        format!(": {tail}")
+    }
+}
+
+/// Run a container to completion (cron job / one-off task). Pulls the image
+/// (optionally authenticated), starts a one-shot container with the given argv,
+/// env, resource limits, and job labels, waits for it to exit under `timeoutMs`
+/// (killing it if it overruns), captures the exit code, duration, and a short log
+/// tail, then removes the container. This never runs arbitrary shell: only the
+/// specified image plus its optional argv are executed.
+pub async fn run_job(docker: &DockerClient, spec: &RunJobSpec) -> Result<CommandOutput> {
+    // Pull first so a private-registry image surfaces a clear auth error.
+    docker
+        .ensure_image_auth(&spec.image, spec.registry_auth.as_deref())
+        .await
+        .with_context(|| format!("pulling job image {}", spec.image))?;
+
+    let env: Vec<String> = spec.env.iter().map(|(k, v)| format!("{k}={v}")).collect();
+
+    let mut labels = managed_labels(LABEL_JOB, &spec.job_id);
+    labels.insert("io.yourstack.job.run".to_string(), spec.run_id.clone());
+
+    let nano_cpus = (spec.resources.cpu * 1_000_000_000.0).round() as i64;
+    let memory_bytes = spec.resources.memory_mb.saturating_mul(1024 * 1024);
+
+    // One-shot: a finished job container must not be restarted.
+    let container_id = run_container(
+        docker,
+        RunOpts {
+            name: &spec.container_name,
+            image: &spec.image,
+            env,
+            labels,
+            cmd: spec.command.clone(),
+            ports: vec![],
+            binds: vec![],
+            network: None,
+            nano_cpus: Some(nano_cpus),
+            memory_bytes: Some(memory_bytes),
+            restart: false,
+        },
+    )
+    .await?;
+
+    // Wait for exit, bounded by the job's own timeout. bollard maps a non-zero
+    // exit to Err(DockerContainerWaitError { code }), so both arms yield a code.
+    let started = Instant::now();
+    let wait_opts = WaitContainerOptions {
+        condition: "not-running".to_string(),
+    };
+    let mut wait = docker
+        .engine()
+        .wait_container(&spec.container_name, Some(wait_opts));
+    let timeout = Duration::from_millis(spec.timeout_ms.max(1) as u64);
+
+    let exit_code: i64 = match tokio::time::timeout(timeout, wait.next()).await {
+        Err(_elapsed) => {
+            // Overran its timeout: kill + remove so no job container is orphaned.
+            let tail = job_log_tail(docker, &spec.container_name, 20).await;
+            let _ = docker.remove_container(&spec.container_name, false).await;
+            bail!(
+                "job {} timed out after {}ms (container killed){}",
+                spec.job_id,
+                spec.timeout_ms,
+                with_tail(&tail)
+            );
+        }
+        Ok(Some(Ok(resp))) => resp.status_code,
+        Ok(Some(Err(BollardError::DockerContainerWaitError { code, .. }))) => code,
+        Ok(Some(Err(e))) => {
+            let _ = docker.remove_container(&spec.container_name, false).await;
+            return Err(anyhow!(e)).with_context(|| format!("waiting for job {}", spec.job_id));
+        }
+        Ok(None) => 0, // stream ended without a response; treat as a clean exit
+    };
+
+    let duration_ms = started.elapsed().as_millis() as i64;
+    let tail = job_log_tail(docker, &spec.container_name, 20).await;
+    let _ = docker.remove_container(&spec.container_name, false).await;
+
+    if exit_code != 0 {
+        bail!(
+            "job {} exited {}{}",
+            spec.job_id,
+            exit_code,
+            with_tail(&tail)
+        );
+    }
+
+    Ok(CommandOutput {
+        message: Some(if tail.is_empty() {
+            format!("job {} completed (exit 0)", spec.job_id)
+        } else {
+            tail
+        }),
+        container_id: Some(container_id),
+        exit_code: Some(exit_code),
+        duration_ms: Some(duration_ms),
+        ..Default::default()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn last_n_lines_keeps_tail_and_drops_blanks() {
+        assert_eq!(last_n_lines("a\nb\nc\nd", 2), "c\nd");
+        // Fewer lines than requested returns them all.
+        assert_eq!(last_n_lines("only", 5), "only");
+        // Blank lines are filtered out before taking the tail.
+        assert_eq!(last_n_lines("a\n\n  \nb\n", 2), "a\nb");
+        assert_eq!(last_n_lines("", 3), "");
+    }
+
+    #[test]
+    fn with_tail_prefixes_only_when_present() {
+        assert_eq!(with_tail(""), "");
+        assert_eq!(with_tail("boom"), ": boom");
+    }
 
     #[test]
     fn split_handler_parses_file_and_export() {

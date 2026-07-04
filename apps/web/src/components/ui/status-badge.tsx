@@ -1,6 +1,7 @@
 import {
   AppStatus,
   BucketStatus,
+  CronJobStatus,
   DatabaseStatus,
   DeploymentStatus,
   DomainStatus,
@@ -85,6 +86,20 @@ const runnerMap: Record<string, Variant> = {
   [RunnerStatus.OFFLINE]: 'default',
 };
 
+const cronMap: Record<string, Variant> = {
+  [CronJobStatus.ACTIVE]: 'success',
+  [CronJobStatus.RUNNING]: 'info',
+  [CronJobStatus.PAUSED]: 'default',
+  [CronJobStatus.FAILED]: 'danger',
+  // Cron *run* statuses (shared between job + run rendering). 'running' and
+  // 'failed' already map above via CronJobStatus.
+  success: 'success',
+  succeeded: 'success',
+  queued: 'default',
+  timed_out: 'warning',
+  canceled: 'warning',
+};
+
 const kinds = {
   app: appMap,
   node: nodeMap,
@@ -95,6 +110,7 @@ const kinds = {
   bucket: bucketMap,
   function: functionMap,
   runner: runnerMap,
+  cron: cronMap,
 } as const;
 
 const activeStates = new Set<string>([
@@ -111,6 +127,9 @@ const activeStates = new Set<string>([
   FunctionStatus.DEPLOYING,
   RunnerStatus.BUSY,
   RunnerStatus.REGISTERING,
+  CronJobStatus.RUNNING,
+  'running',
+  'queued',
 ]);
 
 export function StatusBadge({

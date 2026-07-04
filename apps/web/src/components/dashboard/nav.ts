@@ -1,5 +1,6 @@
 import {
   Boxes,
+  Clock,
   Database,
   FunctionSquare,
   GitBranch,
@@ -13,6 +14,7 @@ import {
   Server,
   Settings,
   Shield,
+  Store,
   Container,
   type LucideIcon,
 } from 'lucide-react';
@@ -38,8 +40,10 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Build',
     items: [
+      { href: '/dashboard/marketplace', label: 'Marketplace', icon: Store },
       { href: '/dashboard/apps', label: 'Apps', icon: Boxes },
       { href: '/dashboard/functions', label: 'Functions', icon: FunctionSquare },
+      { href: '/dashboard/cron', label: 'Cron Jobs', icon: Clock },
     ],
   },
   {

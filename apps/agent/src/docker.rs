@@ -85,6 +85,16 @@ impl DockerClient {
         self.pull_image(image, None).await
     }
 
+    /// Pull an image with optional base64 `user:pass` registry auth (private
+    /// images). Idempotent; returns progress log lines.
+    pub(crate) async fn ensure_image_auth(
+        &self,
+        image: &str,
+        registry_auth: Option<&str>,
+    ) -> Result<Vec<String>> {
+        self.pull_image(image, registry_auth).await
+    }
+
     /// Server version string, or `None` if the daemon is unreachable.
     pub async fn version(&self) -> Result<Option<String>> {
         let v = self.docker.version().await.context("docker version")?;

@@ -1,9 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import { Check, GitBranch, Github, Lock, Plus, RefreshCw, Webhook } from 'lucide-react';
-import type { GitRepositoryDTO } from '@yourstack/shared';
+import {
+  Building2,
+  Check,
+  ExternalLink,
+  GitBranch,
+  Github,
+  Lock,
+  Plus,
+  RefreshCw,
+  Trash2,
+  User,
+  Webhook,
+  Zap,
+} from 'lucide-react';
+import type { GithubInstallationDTO, GitRepositoryDTO } from '@yourstack/shared';
+import { GithubAccountType } from '@yourstack/shared';
 import { useSession } from '@/lib/session';
 import { useWorkspaceDeployments } from '@/lib/hooks';
 import { api, ApiError, type GithubRepo } from '@/lib/api';
@@ -12,6 +26,7 @@ import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { SkeletonRows } from '@/components/ui/skeleton';
@@ -33,13 +48,15 @@ export default function CicdPage() {
     <div className="space-y-6">
       <PageHeader
         title="CI/CD"
-        description="Connect GitHub repositories to build and deploy on every push."
+        description="Connect GitHub to build and deploy on every push."
         actions={
           <Button onClick={() => setConnectOpen(true)}>
             <Plus className="h-4 w-4" /> Connect repository
           </Button>
         }
       />
+
+      {wid ? <GithubAppCard wid={wid} /> : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -135,6 +152,144 @@ export default function CicdPage() {
   );
 }
 
+function GithubAppCard({ wid }: { wid: string }) {
+  const toast = useToast();
+  const { data, error, isLoading, mutate } = useSWR(
+    ['github-installations', wid],
+    () => api.githubInstallations(wid),
+  );
+  const [installing, setInstalling] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  // Surface the post-install redirect (`?installed=1`) as a success toast, then
+  // strip the query param so a refresh doesn't re-fire it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('installed') === '1') {
+      toast.success('GitHub App installed', 'Pushes to connected repos now auto-deploy.');
+      window.history.replaceState(null, '', window.location.pathname);
+      mutate();
+    }
+    // Only run once on mount — the install redirect is a one-shot signal.
+  }, [mutate, toast]);
+
+  const install = async () => {
+    setInstalling(true);
+    try {
+      const { url } = await api.githubAppInstallUrl(wid);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      toast.error('Could not start installation', err instanceof ApiError ? err.message : undefined);
+    } finally {
+      setInstalling(false);
+    }
+  };
+
+  const remove = async (inst: GithubInstallationDTO) => {
+    if (
+      !window.confirm(
+        `Remove the GitHub App from ${inst.accountLogin}? Repos under it will stop auto-deploying.`,
+      )
+    )
+      return;
+    setRemoving(inst.id);
+    try {
+      await api.removeGithubInstallation(inst.id);
+      toast.success('Installation removed', inst.accountLogin);
+      mutate();
+    } catch (err) {
+      toast.error('Could not remove installation', err instanceof ApiError ? err.message : undefined);
+    } finally {
+      setRemoving(null);
+    }
+  };
+
+  const installations = data?.installations ?? [];
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex flex-col gap-4 border-b border-border bg-gradient-to-br from-primary/5 to-transparent p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-surface text-foreground">
+            <Github className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="text-base font-semibold tracking-tight text-foreground">
+              GitHub App
+            </h3>
+            <p className="mt-0.5 max-w-md text-sm text-muted-foreground">
+              Install the YourStack GitHub App to grant repo access. Pushes to connected repos
+              build and deploy automatically — no webhooks to wire up.
+            </p>
+          </div>
+        </div>
+        <Button onClick={install} loading={installing} className="shrink-0">
+          <ExternalLink className="h-4 w-4" /> Install GitHub App
+        </Button>
+      </div>
+
+      <CardContent className="pt-5">
+        <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <Zap className="h-3.5 w-3.5 text-primary" /> Installations
+        </p>
+        {error ? (
+          <ErrorState message="Could not load installations." onRetry={() => mutate()} />
+        ) : isLoading ? (
+          <SkeletonRows rows={2} />
+        ) : installations.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border bg-surface-muted/40 px-3 py-4 text-sm text-muted-foreground">
+            No installations yet. Install the app above to connect an organization or user account.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {installations.map((inst) => {
+              const isOrg = inst.accountType === GithubAccountType.ORGANIZATION;
+              return (
+                <div
+                  key={inst.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar
+                      src={`https://github.com/${inst.accountLogin}.png`}
+                      name={inst.accountLogin}
+                      size={34}
+                    />
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
+                        {inst.accountLogin}
+                        <Badge variant="outline" className="gap-1">
+                          {isOrg ? <Building2 className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                          {isOrg ? 'Organization' : 'User'}
+                        </Badge>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {inst.repositoryCount}{' '}
+                        {inst.repositorySelection === 'all' ? 'repos (all)' : 'repos selected'} ·
+                        installed {timeAgo(inst.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    loading={removing === inst.id}
+                    onClick={() => remove(inst)}
+                    aria-label={`Remove ${inst.accountLogin}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ConnectRepoDialog({
   wid,
   open,
@@ -189,7 +344,7 @@ function ConnectRepoDialog({
         <div className="py-4">
           <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 text-sm text-warning">
             {error instanceof ApiError && error.code === 'bad_request'
-              ? 'Connect your GitHub account first — sign in with GitHub to grant repo access.'
+              ? 'Connect your GitHub account first — install the GitHub App above to grant repo access.'
               : 'Could not load your GitHub repositories.'}
           </div>
         </div>

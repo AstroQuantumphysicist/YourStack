@@ -24,6 +24,7 @@ export interface WorkerContext {
     fn: Queue;
     runner: Queue;
     autoscale: Queue;
+    cron: Queue;
   };
 }
 
@@ -48,6 +49,7 @@ export function createContext(): WorkerContext {
     fn: new Queue(QUEUE_NAMES.FUNCTION, opts),
     runner: new Queue(QUEUE_NAMES.RUNNER, opts),
     autoscale: new Queue(QUEUE_NAMES.AUTOSCALE, opts),
+    cron: new Queue(QUEUE_NAMES.CRON, opts),
   };
 
   return {

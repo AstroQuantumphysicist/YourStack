@@ -226,6 +226,10 @@ impl Executor {
             CommandPayload::ScaleApp { spec } => {
                 resources::scale_app(self.require_docker()?, &spec).await
             }
+            // ---- v3 scheduled jobs ----
+            CommandPayload::RunJob { spec } => {
+                resources::run_job(self.require_docker()?, &spec).await
+            }
         }
     }
 

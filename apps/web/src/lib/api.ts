@@ -3,10 +3,12 @@ import type {
   AuditLogDTO,
   ApiTokenDTO,
   BucketDTO,
+  CronJobDTO,
   DatabaseDTO,
   DeploymentDTO,
   DomainDTO,
   FunctionDTO,
+  GithubInstallationDTO,
   GitRepositoryDTO,
   MemberDTO,
   MetricSeries,
@@ -18,6 +20,7 @@ import type {
   RunnerPoolDTO,
   ScalingPolicyDTO,
   SecretDTO,
+  TemplateDTO,
   UserDTO,
   WorkspaceDTO,
   WorkspaceStatsDTO,
@@ -266,6 +269,34 @@ export interface FunctionInvocation {
   createdAt: string;
 }
 
+/* --------------------------- Marketplace / v3 shapes ------------------------ */
+
+/** Result of `POST /templates/deploy` — a pointer to the provisioned resource. */
+export interface TemplateDeployResult {
+  kind: string;
+  id: string;
+  resourceType: string;
+}
+
+export interface DeployTemplateBody {
+  templateSlug: string;
+  projectId: string;
+  name?: string;
+  nodeId?: string;
+  region?: string;
+  variables: Record<string, string>;
+}
+
+/** A single execution of a cron job. */
+export interface CronRun {
+  id: string;
+  status: string;
+  exitCode: number | null;
+  durationMs: number | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+}
+
 /** Metric scope + kinds mirror @yourstack/shared MetricScope / MetricKind. */
 export type MetricScopeName = 'app' | 'node' | 'database' | 'function';
 
@@ -489,6 +520,36 @@ export const api = {
 
   // Regions (v2)
   regions: () => request<{ regions: RegionDTO[] }>('/regions'),
+
+  // Templates / marketplace (v3)
+  templates: (query?: { category?: string; search?: string }) =>
+    request<{ templates: TemplateDTO[] }>('/templates', { query }),
+  template: (slug: string) => request<{ template: TemplateDTO }>(`/templates/${slug}`),
+  deployTemplate: (body: DeployTemplateBody) =>
+    request<TemplateDeployResult>('/templates/deploy', { method: 'POST', body }),
+
+  // GitHub App (v3)
+  githubAppInstallUrl: (workspaceId: string) =>
+    request<{ url: string }>('/github/app/install-url', { query: { workspaceId } }),
+  githubInstallations: (wid: string) =>
+    request<{ installations: GithubInstallationDTO[] }>(
+      `/workspaces/${wid}/github/installations`,
+    ),
+  githubInstallationRepos: (id: string) =>
+    request<{ repos: GithubRepo[] }>(`/github/installations/${id}/repos`),
+  removeGithubInstallation: (id: string) =>
+    request<void>(`/github/installations/${id}`, { method: 'DELETE' }),
+
+  // Cron jobs (v3)
+  projectCron: (pid: string) => request<{ cronJobs: CronJobDTO[] }>(`/projects/${pid}/cron`),
+  createCron: (pid: string, body: Record<string, unknown>) =>
+    request<{ cronJob: CronJobDTO }>(`/projects/${pid}/cron`, { method: 'POST', body }),
+  cron: (id: string) => request<{ cronJob: CronJobDTO }>(`/cron/${id}`),
+  updateCron: (id: string, body: { schedule?: string; paused?: boolean }) =>
+    request<{ cronJob: CronJobDTO }>(`/cron/${id}`, { method: 'PATCH', body }),
+  deleteCron: (id: string) => request<void>(`/cron/${id}`, { method: 'DELETE' }),
+  runCron: (id: string) => request<{ run: CronRun }>(`/cron/${id}/run`, { method: 'POST' }),
+  cronRuns: (id: string) => request<{ runs: CronRun[] }>(`/cron/${id}/runs`),
 
   // Metrics (v2)
   metrics: (q: MetricsQuery) =>

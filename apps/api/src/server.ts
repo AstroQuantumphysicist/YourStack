@@ -31,6 +31,9 @@ import runnerRoutes from './routes/runners.js';
 import scalingRoutes from './routes/scaling.js';
 import regionRoutes from './routes/regions.js';
 import metricsQueryRoutes from './routes/metrics-query.js';
+import templateRoutes from './routes/templates.js';
+import cronRoutes from './routes/cron.js';
+import githubAppRoutes from './routes/github-app.js';
 
 export interface BuiltServer {
   app: FastifyInstance;
@@ -105,6 +108,10 @@ export async function buildServer(ctx = createContext()): Promise<BuiltServer> {
     await instance.register(scalingRoutes);
     await instance.register(regionRoutes);
     await instance.register(metricsQueryRoutes);
+    // Marketplace, cron, and GitHub App (v3)
+    await instance.register(templateRoutes);
+    await instance.register(cronRoutes);
+    await instance.register(githubAppRoutes);
   };
   await app.register(v1, { prefix: `/${API_VERSION}` });
 

@@ -26,6 +26,7 @@ pub const LABEL_DATABASE: &str = "io.yourstack.database";
 pub const LABEL_STORAGE: &str = "io.yourstack.storage";
 pub const LABEL_FUNCTION: &str = "io.yourstack.function";
 pub const LABEL_RUNNER: &str = "io.yourstack.runner";
+pub const LABEL_JOB: &str = "io.yourstack.job";
 
 /* ------------------------------- registration ------------------------------ */
 
@@ -199,6 +200,9 @@ pub enum CommandPayload {
     DeregisterRunner { spec: DeregisterRunnerSpec },
     #[serde(rename = "SCALE_APP")]
     ScaleApp { spec: ScaleAppSpec },
+    // ---- v3 scheduled jobs ----
+    #[serde(rename = "RUN_JOB")]
+    RunJob { spec: RunJobSpec },
 }
 
 impl CommandPayload {
@@ -225,6 +229,7 @@ impl CommandPayload {
             CommandPayload::RegisterRunner { .. } => "REGISTER_RUNNER",
             CommandPayload::DeregisterRunner { .. } => "DEREGISTER_RUNNER",
             CommandPayload::ScaleApp { .. } => "SCALE_APP",
+            CommandPayload::RunJob { .. } => "RUN_JOB",
         }
     }
 }
@@ -707,6 +712,31 @@ pub struct ScaleAppSpec {
     pub container_name: String,
     pub replicas: i64,
     pub resources: ResourceSpec,
+}
+
+fn default_job_timeout_ms() -> i64 {
+    600_000
+}
+
+/// `runJobSpecSchema` — run a container to completion (cron job / one-off task).
+#[derive(Debug, Clone, Deserialize)]
+pub struct RunJobSpec {
+    #[serde(rename = "jobId")]
+    pub job_id: String,
+    #[serde(rename = "runId")]
+    pub run_id: String,
+    #[serde(rename = "containerName")]
+    pub container_name: String,
+    pub image: String,
+    #[serde(default)]
+    pub command: Option<Vec<String>>,
+    #[serde(default)]
+    pub env: BTreeMap<String, String>,
+    pub resources: ResourceSpec,
+    #[serde(rename = "timeoutMs", default = "default_job_timeout_ms")]
+    pub timeout_ms: i64,
+    #[serde(rename = "registryAuth", default)]
+    pub registry_auth: Option<String>,
 }
 
 /* ---------------------------------- results -------------------------------- */

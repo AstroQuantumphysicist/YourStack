@@ -73,6 +73,9 @@ export function useSSE(channel: string | null | undefined, options: UseSSEOption
       'function.invocation',
       'runner.status',
       'scaling.update',
+      // v3 cron events
+      'cron.status',
+      'cron.run',
     ];
     const listeners: Array<[string, (e: MessageEvent) => void]> = [];
     for (const name of named) {

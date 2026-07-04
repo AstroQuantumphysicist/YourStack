@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import type {
   AppDTO,
   BucketDTO,
+  CronJobDTO,
   DatabaseDTO,
   FunctionDTO,
   ProjectDTO,
@@ -60,6 +61,11 @@ export const useWorkspaceBuckets = makeResourceHook<BucketDTO>(
 export const useWorkspaceFunctions = makeResourceHook<FunctionDTO>(
   'ws-functions',
   async (pid) => (await api.functions(pid)).functions,
+);
+
+export const useWorkspaceCron = makeResourceHook<CronJobDTO>(
+  'ws-cron',
+  async (pid) => (await api.projectCron(pid)).cronJobs,
 );
 
 /**

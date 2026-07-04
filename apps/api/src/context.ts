@@ -29,6 +29,7 @@ export interface AppContext {
     fn: Queue;
     runner: Queue;
     autoscale: Queue;
+    cron: Queue;
   };
   realtime: RealtimeHub;
   github: GithubClient;
@@ -53,6 +54,7 @@ export function createContext(): AppContext {
     fn: new Queue(QUEUE_NAMES.FUNCTION, connection),
     runner: new Queue(QUEUE_NAMES.RUNNER, connection),
     autoscale: new Queue(QUEUE_NAMES.AUTOSCALE, connection),
+    cron: new Queue(QUEUE_NAMES.CRON, connection),
   };
 
   const encryptor = createEncryptor(config.SECRETS_ENCRYPTION_KEY);

@@ -40,6 +40,12 @@ export async function applyCommandResult(
     return;
   }
 
+  // Scheduled jobs (v3): a RUN_JOB result closes out a CronRun.
+  if (command.type === CommandType.RUN_JOB) {
+    if (terminal) await applyCronRunResult(prisma, realtime, command, result);
+    return;
+  }
+
   if (!command.deploymentId) return;
   const deploymentId = command.deploymentId;
 
@@ -182,6 +188,63 @@ const RESOURCE_COMMAND_TYPES = new Set<string>([
   CommandType.DEREGISTER_RUNNER,
   CommandType.SCALE_APP,
 ]);
+
+/** Map a terminal command status to a CronRun status string. */
+function cronRunStatus(status: ResultInput['status']): string {
+  if (status === 'succeeded') return 'success';
+  if (status === 'timed_out') return 'timeout';
+  return 'failed';
+}
+
+/**
+ * Close out a CronRun from a RUN_JOB result: record exit code/duration and roll
+ * the parent CronJob's lastRun summary forward. The run row is upserted so it is
+ * self-healing even if the worker's initial "running" insert was lost.
+ */
+async function applyCronRunResult(
+  prisma: PrismaClient,
+  realtime: RealtimeHub,
+  command: NodeCommand,
+  result: ResultInput,
+): Promise<void> {
+  const payload = command.payload as { type: string; spec: { jobId?: string; runId?: string } };
+  const jobId = payload.spec?.jobId;
+  const runId = payload.spec?.runId;
+  if (!jobId || !runId) return;
+
+  const status = cronRunStatus(result.status);
+  const out = result.output ?? {};
+  const now = new Date();
+  const exitCode = typeof out.exitCode === 'number' ? out.exitCode : status === 'success' ? 0 : 1;
+  const durationMs = typeof out.durationMs === 'number' ? out.durationMs : null;
+
+  await prisma.cronRun.upsert({
+    where: { id: runId },
+    create: {
+      id: runId,
+      cronJobId: jobId,
+      status,
+      exitCode,
+      durationMs,
+      startedAt: command.startedAt ?? now,
+      finishedAt: now,
+    },
+    update: { status, exitCode, durationMs, finishedAt: now },
+  });
+
+  // Roll the parent job's last-run summary forward (keep paused jobs paused).
+  const job = await prisma.cronJob.findUnique({ where: { id: jobId }, select: { status: true } });
+  await prisma.cronJob.updateMany({
+    where: { id: jobId },
+    data: {
+      lastRunAt: now,
+      lastRunStatus: status,
+      status: job?.status === 'paused' ? undefined : 'active',
+    },
+  });
+
+  await realtime.publish(SSE_CHANNELS.cron(jobId), 'cron.run', { cronJobId: jobId, runId, status });
+}
 
 /** Drive the state of a managed resource from an agent's command result. */
 async function applyResourceResult(

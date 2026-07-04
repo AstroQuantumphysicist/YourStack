@@ -13,6 +13,7 @@ import { processStorage } from './processors/storage.js';
 import { processFunction } from './processors/function.js';
 import { processRunner } from './processors/runner.js';
 import { processAutoscale } from './processors/autoscale.js';
+import { processCron } from './processors/cron.js';
 
 type Processor = (ctx: WorkerContext, job: Job) => Promise<void>;
 
@@ -61,6 +62,7 @@ async function main() {
     makeWorker(ctx, QUEUE_NAMES.FUNCTION, processFunction, 4),
     makeWorker(ctx, QUEUE_NAMES.RUNNER, processRunner, 4),
     makeWorker(ctx, QUEUE_NAMES.AUTOSCALE, processAutoscale, 4),
+    makeWorker(ctx, QUEUE_NAMES.CRON, processCron, 4),
   ];
 
   await scheduleMaintenance(ctx);

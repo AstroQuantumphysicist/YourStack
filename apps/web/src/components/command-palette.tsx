@@ -4,12 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Boxes,
+  Clock,
   CornerDownLeft,
   Database,
   FunctionSquare,
   HardDrive,
   Plus,
   Search,
+  Store,
   type LucideIcon,
 } from 'lucide-react';
 import { NAV_ITEMS } from './dashboard/nav';
@@ -92,6 +94,22 @@ export function CommandPalette() {
         group: 'Actions',
         keywords: 'new serverless lambda',
         run: (r) => r.push('/dashboard/functions?new=1'),
+      },
+      {
+        id: 'browse-marketplace',
+        label: 'Browse marketplace',
+        icon: Store,
+        group: 'Actions',
+        keywords: 'template deploy app store catalog one-click',
+        run: (r) => r.push('/dashboard/marketplace'),
+      },
+      {
+        id: 'new-cron',
+        label: 'Create cron job',
+        icon: Clock,
+        group: 'Actions',
+        keywords: 'new scheduled task schedule job',
+        run: (r) => r.push('/dashboard/cron?new=1'),
       },
     ];
     const nav: Command[] = NAV_ITEMS.filter((n) => !n.adminOnly || user?.isPlatformAdmin).map(

@@ -22,6 +22,9 @@ import type {
   Runner,
   ScalingPolicy,
   Region,
+  Template,
+  CronJob,
+  GithubInstallation,
 } from '@yourstack/db';
 import type {
   AppDTO,
@@ -49,8 +52,13 @@ import type {
   RunnerDTO,
   ScalingPolicyDTO,
   RegionDTO,
+  TemplateDTO,
+  TemplateVariableDTO,
+  CronJobDTO,
+  GithubInstallationDTO,
 } from '@yourstack/shared';
 import { iso } from './util.js';
+import { templateVariableDTOs } from '../services/template.service.js';
 
 export function toUserDTO(u: User): UserDTO {
   return {
@@ -386,5 +394,54 @@ export function toRegionDTO(r: Region, nodeCount: number): RegionDTO {
     flag: r.flag,
     nodeCount,
     latencyMs: null,
+  };
+}
+
+/* ------------------------------ Marketplace (v3) ---------------------------- */
+
+export function toTemplateDTO(t: Template): TemplateDTO {
+  const variables: TemplateVariableDTO[] = templateVariableDTOs(t.spec);
+  return {
+    slug: t.slug,
+    name: t.name,
+    category: t.category,
+    kind: t.kind,
+    description: t.description,
+    icon: t.icon,
+    image: t.image,
+    tags: t.tags,
+    popularity: t.popularity,
+    variables,
+  };
+}
+
+export function toCronJobDTO(c: CronJob): CronJobDTO {
+  return {
+    id: c.id,
+    projectId: c.projectId,
+    name: c.name,
+    schedule: c.schedule,
+    image: c.image,
+    command: c.command,
+    status: c.status,
+    nodeId: c.nodeId,
+    region: c.region,
+    lastRunAt: iso(c.lastRunAt),
+    lastRunStatus: c.lastRunStatus,
+    nextRunAt: iso(c.nextRunAt),
+    createdAt: c.createdAt.toISOString(),
+  };
+}
+
+export function toGithubInstallationDTO(i: GithubInstallation): GithubInstallationDTO {
+  return {
+    id: i.id,
+    installationId: i.installationId,
+    accountLogin: i.accountLogin,
+    accountType: i.accountType,
+    repositorySelection: i.repositorySelection,
+    // Count of explicitly-selected repos; "all" installations signal via repositorySelection.
+    repositoryCount: i.repositories.length,
+    createdAt: i.createdAt.toISOString(),
   };
 }
