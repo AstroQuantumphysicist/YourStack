@@ -84,7 +84,13 @@ impl ApiClient {
     pub async fn heartbeat(&self, req: &HeartbeatRequest) -> Result<HeartbeatResponse> {
         let token = self.bearer()?;
         let value = self
-            .send_with_retry("POST", "/agent/heartbeat", token, Some(req), REQUEST_TIMEOUT)
+            .send_with_retry(
+                "POST",
+                "/agent/heartbeat",
+                token,
+                Some(req),
+                REQUEST_TIMEOUT,
+            )
             .await?;
         serde_json::from_value(value).context("decoding heartbeat response")
     }

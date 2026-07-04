@@ -103,9 +103,8 @@ async fn main() -> Result<()> {
         Command::Run => {
             init_tracing(false);
             let path = cli.config.unwrap_or_else(default_config_path);
-            let cfg = Config::load(&path).with_context(|| {
-                format!("loading config at {}", path.display())
-            })?;
+            let cfg = Config::load(&path)
+                .with_context(|| format!("loading config at {}", path.display()))?;
             daemon::run(cfg).await
         }
     }
@@ -154,7 +153,11 @@ async fn register(
         config = %path.display(),
         "registration successful"
     );
-    println!("Registered as node {}. Config written to {}.", resp.node_id, path.display());
+    println!(
+        "Registered as node {}. Config written to {}.",
+        resp.node_id,
+        path.display()
+    );
     Ok(())
 }
 

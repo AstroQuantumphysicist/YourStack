@@ -66,10 +66,7 @@ impl DockerClient {
     /// App ids (or container ids) of running, agent-managed containers.
     pub async fn list_managed_apps(&self) -> Result<Vec<String>> {
         let mut filters: HashMap<String, Vec<String>> = HashMap::new();
-        filters.insert(
-            "label".to_string(),
-            vec![format!("{LABEL_MANAGED}=true")],
-        );
+        filters.insert("label".to_string(), vec![format!("{LABEL_MANAGED}=true")]);
         let opts = ListContainersOptions {
             all: false,
             filters,
@@ -141,7 +138,13 @@ impl DockerClient {
             } => {
                 let mut logs = Vec::new();
                 let dir = self
-                    .clone_repo(repo_url, git_ref, clone_token.as_deref(), &spec.deployment_id, &mut logs)
+                    .clone_repo(
+                        repo_url,
+                        git_ref,
+                        clone_token.as_deref(),
+                        &spec.deployment_id,
+                        &mut logs,
+                    )
                     .await?;
                 let context = dir.join(context_path);
                 let dockerfile_path = context.join(dockerfile);
@@ -167,7 +170,13 @@ impl DockerClient {
             } => {
                 let mut logs = Vec::new();
                 let dir = self
-                    .clone_repo(repo_url, git_ref, clone_token.as_deref(), &spec.deployment_id, &mut logs)
+                    .clone_repo(
+                        repo_url,
+                        git_ref,
+                        clone_token.as_deref(),
+                        &spec.deployment_id,
+                        &mut logs,
+                    )
                     .await?;
                 // Generate a Dockerfile for the framework unless the repo has one.
                 let dockerfile_contents = generate_dockerfile(
@@ -374,11 +383,7 @@ impl DockerClient {
             );
         }
 
-        let env: Vec<String> = spec
-            .env
-            .iter()
-            .map(|(k, v)| format!("{k}={v}"))
-            .collect();
+        let env: Vec<String> = spec.env.iter().map(|(k, v)| format!("{k}={v}")).collect();
 
         let mut labels: HashMap<String, String> = HashMap::new();
         labels.insert(LABEL_MANAGED.to_string(), "true".to_string());
@@ -434,7 +439,10 @@ impl DockerClient {
             .context("creating container")?;
 
         self.docker
-            .start_container(&spec.container_name, None::<bollard::container::StartContainerOptions<String>>)
+            .start_container(
+                &spec.container_name,
+                None::<bollard::container::StartContainerOptions<String>>,
+            )
             .await
             .context("starting container")?;
 
@@ -578,8 +586,8 @@ fn log_output_to_string(output: &LogOutput) -> String {
 
 /// Allocate a free TCP port by binding to port 0 and reading the assigned port.
 fn allocate_ephemeral_port() -> Result<u16> {
-    let listener = std::net::TcpListener::bind("127.0.0.1:0")
-        .context("allocating ephemeral host port")?;
+    let listener =
+        std::net::TcpListener::bind("127.0.0.1:0").context("allocating ephemeral host port")?;
     let port = listener.local_addr()?.port();
     Ok(port)
 }
@@ -600,7 +608,9 @@ fn split_image_tag(image: &str) -> (String, String) {
 
 /// Decode base64 `user:pass` into bollard credentials.
 fn decode_registry_auth(auth: &str) -> Option<DockerCredentials> {
-    let decoded = base64::engine::general_purpose::STANDARD.decode(auth).ok()?;
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(auth)
+        .ok()?;
     let s = String::from_utf8(decoded).ok()?;
     let (user, pass) = s.split_once(':')?;
     Some(DockerCredentials {
@@ -623,10 +633,7 @@ fn inject_clone_token(repo_url: &str, token: Option<&str>) -> String {
 
 /// The primary container port for a buildpack build (first mapping, else 3000).
 fn default_port(spec: &DeployAppSpec) -> u16 {
-    spec.ports
-        .first()
-        .map(|p| p.container_port)
-        .unwrap_or(3000)
+    spec.ports.first().map(|p| p.container_port).unwrap_or(3000)
 }
 
 /// Generate a reasonable Dockerfile per framework for buildpack sources.
@@ -648,9 +655,7 @@ fn generate_dockerfile(
         }
         Framework::Node => {
             let install = install.unwrap_or("npm ci --omit=dev");
-            let build = build
-                .map(|b| format!("RUN {b}\n"))
-                .unwrap_or_default();
+            let build = build.map(|b| format!("RUN {b}\n")).unwrap_or_default();
             let start = start.unwrap_or("node index.js");
             format!(
                 "FROM node:20-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN {install}\nCOPY . .\n{build}ENV PORT={port}\nEXPOSE {port}\nCMD {start}\n"
@@ -658,9 +663,7 @@ fn generate_dockerfile(
         }
         Framework::Python => {
             let install = install.unwrap_or("pip install --no-cache-dir -r requirements.txt");
-            let build = build
-                .map(|b| format!("RUN {b}\n"))
-                .unwrap_or_default();
+            let build = build.map(|b| format!("RUN {b}\n")).unwrap_or_default();
             let start = start.unwrap_or("python app.py");
             format!(
                 "FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt ./\nRUN {install}\nCOPY . .\n{build}ENV PORT={port}\nEXPOSE {port}\nCMD {start}\n"

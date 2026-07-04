@@ -122,7 +122,10 @@ fn disk_mb() -> (i64, i64) {
             best_used = total.saturating_sub(disk.available_space());
         }
     }
-    ((best_total / BYTES_PER_MB) as i64, (best_used / BYTES_PER_MB) as i64)
+    (
+        (best_total / BYTES_PER_MB) as i64,
+        (best_used / BYTES_PER_MB) as i64,
+    )
 }
 
 async fn docker_version(docker: Option<&DockerClient>) -> Option<String> {

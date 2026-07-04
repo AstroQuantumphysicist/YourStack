@@ -69,8 +69,7 @@ impl CaddyManager {
         // Append to the default HTTP server's routes. This assumes a server named
         // `srv0` (Caddy's default when adapting a Caddyfile). If the running
         // config differs, the fallback path writes a Caddyfile instead.
-        let routes_url =
-            format!("{CADDY_ADMIN}/config/apps/http/servers/srv0/routes/...");
+        let routes_url = format!("{CADDY_ADMIN}/config/apps/http/servers/srv0/routes/...");
         let resp = self
             .http
             .post(&routes_url)

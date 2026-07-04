@@ -54,19 +54,26 @@ impl Executor {
         tracing::info!(%command_id, command_type = type_name, "executing command");
 
         // Acknowledge receipt.
-        self.report(&command_id, CommandStatus::Accepted, CommandOutput::default(), None)
-            .await;
-        self.report(&command_id, CommandStatus::Running, CommandOutput::default(), None)
-            .await;
+        self.report(
+            &command_id,
+            CommandStatus::Accepted,
+            CommandOutput::default(),
+            None,
+        )
+        .await;
+        self.report(
+            &command_id,
+            CommandStatus::Running,
+            CommandOutput::default(),
+            None,
+        )
+        .await;
 
         let timeout = Duration::from_millis(command.timeout_ms.max(1) as u64);
         let this = Arc::clone(self);
         let cmd_id_for_run = command_id.clone();
-        let result = tokio::time::timeout(
-            timeout,
-            this.dispatch(command.payload, cmd_id_for_run),
-        )
-        .await;
+        let result =
+            tokio::time::timeout(timeout, this.dispatch(command.payload, cmd_id_for_run)).await;
 
         match result {
             Err(_elapsed) => {
@@ -171,8 +178,15 @@ impl Executor {
                 })
             }
             CommandPayload::StreamLogs { spec } => {
-                self.stream_logs(&spec.app_id, &spec.container_name, &command_id, spec.tail, spec.follow, spec.since_seconds)
-                    .await
+                self.stream_logs(
+                    &spec.app_id,
+                    &spec.container_name,
+                    &command_id,
+                    spec.tail,
+                    spec.follow,
+                    spec.since_seconds,
+                )
+                .await
             }
         }
     }
@@ -222,7 +236,9 @@ impl Executor {
             if let Some(host_port) = run.host_port {
                 match self.caddy.configure_domain(domain, host_port).await {
                     Ok(msg) => tracing::info!(%command_id, "{msg}"),
-                    Err(e) => tracing::warn!(%command_id, error = %e, "domain configuration failed"),
+                    Err(e) => {
+                        tracing::warn!(%command_id, error = %e, "domain configuration failed")
+                    }
                 }
             }
         }
@@ -280,14 +296,16 @@ impl Executor {
                         meta: None,
                     });
                     if batch.len() >= 100 {
-                        self.flush_logs(command_id, std::mem::take(&mut batch)).await;
+                        self.flush_logs(command_id, std::mem::take(&mut batch))
+                            .await;
                     }
                 }
                 Ok(None) => break, // producer finished
                 Err(_) => {
                     // Idle flush.
                     if !batch.is_empty() {
-                        self.flush_logs(command_id, std::mem::take(&mut batch)).await;
+                        self.flush_logs(command_id, std::mem::take(&mut batch))
+                            .await;
                     }
                 }
             }
