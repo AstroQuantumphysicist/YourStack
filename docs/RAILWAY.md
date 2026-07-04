@@ -10,7 +10,15 @@ repo root as build context** and is selected by a per-service config file.
 ## 1. Create the project
 
 1. **New Project → Deploy from GitHub repo →** select `AstroQuantumphysicist/YourStack`.
-2. Add **Postgres** and **Redis** (New → Database) to the same project.
+2. **Add the databases FIRST — this is required.** New → Database → **Add PostgreSQL**,
+   then New → Database → **Add Redis**. The control plane cannot start (and the
+   pre-deploy migration cannot run) without them.
+
+> ### Troubleshooting: `P1012 … DATABASE_URL resolved to an empty string`
+> This means no Postgres exists yet (or the variable isn't referenced). Add a
+> Postgres service, then on **api** and **worker** set
+> `DATABASE_URL=${{Postgres.DATABASE_URL}}` and `REDIS_URL=${{Redis.REDIS_URL}}`
+> (use the **Add Reference** button so the service name is correct), and redeploy.
 
 ## 2. Configure the three services
 

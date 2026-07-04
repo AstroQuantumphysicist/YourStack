@@ -24,7 +24,7 @@ dockerfilePath = "apps/api/Dockerfile"
 [deploy]
 # Apply DB migrations before the new version receives traffic. Runs inside the
 # freshly built image (which ships the Prisma CLI + schema + migrations).
-preDeployCommand = "pnpm --filter @yourstack/db migrate:deploy"
+preDeployCommand = "sh /app/scripts/railway-migrate.sh"
 startCommand = "node dist/index.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
