@@ -9,6 +9,17 @@ export const HEARTBEAT_INTERVAL_MS = 15_000;
 export const NODE_DEGRADED_AFTER_MS = 45_000;
 /** A node with no heartbeat within this window is considered offline. */
 export const NODE_OFFLINE_AFTER_MS = 90_000;
+/**
+ * Minimum spacing between auto-heal reconciliations for a single node. When a
+ * node reconnects the control plane redeploys apps that should be running but
+ * aren't; this cooldown prevents redeploy storms from flapping nodes.
+ */
+export const NODE_RECONCILE_COOLDOWN_MS = 120_000;
+/**
+ * Grace added to a command's own timeout before the reaper fails it. A command
+ * still unfinished this long after issue is treated as dead (node offline/stuck).
+ */
+export const COMMAND_STALE_GRACE_MS = 60_000;
 
 /** Node command polling. */
 export const COMMAND_POLL_TIMEOUT_MS = 25_000;

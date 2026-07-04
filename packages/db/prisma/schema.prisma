@@ -32,6 +32,9 @@ enum AppStatus {
   running
   failed
   stopped
+  // The app's node is offline (or the container is not confirmed running); the
+  // control plane auto-heals it (redeploys) when the node returns.
+  unreachable
 }
 
 enum NodeStatus {
@@ -418,6 +421,8 @@ model Node {
   diskUsedMb      Int?
   disabled        Boolean    @default(false)
   lastHeartbeatAt DateTime?
+  // When the control plane last reconciled this node's apps (auto-heal cooldown).
+  lastReconcileAt DateTime?
   registeredAt    DateTime?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt

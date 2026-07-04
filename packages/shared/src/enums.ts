@@ -28,6 +28,7 @@ export const AppStatus = {
   RUNNING: 'running',
   FAILED: 'failed',
   STOPPED: 'stopped',
+  UNREACHABLE: 'unreachable',
 } as const;
 export type AppStatus = (typeof AppStatus)[keyof typeof AppStatus];
 

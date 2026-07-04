@@ -15,6 +15,7 @@ import { Errors } from '../lib/errors.js';
 import { bearerToken } from '../lib/auth.js';
 import { applyCommandResult } from '../services/command-result.service.js';
 import { ingestMetrics } from '../services/metrics.service.js';
+import { reconcileNodeApps } from '../services/reconcile.service.js';
 
 /** Authenticate the agent via its Bearer token; attaches req.node. */
 async function authenticateNode(app: FastifyInstance, req: FastifyRequest): Promise<void> {
@@ -33,7 +34,7 @@ async function authenticateNode(app: FastifyInstance, req: FastifyRequest): Prom
 }
 
 export default async function agentRoutes(app: FastifyInstance) {
-  const { prisma, realtime, audit } = app.ctx;
+  const { prisma, realtime, audit, queues } = app.ctx;
 
   // --- Register (join token; no agent auth yet) ---
   app.post('/agent/register', async (req) => {
@@ -106,11 +107,20 @@ export default async function agentRoutes(app: FastifyInstance) {
       const t = body.telemetry;
       const node = req.node!;
 
-      const [, pending, current] = await prisma.$transaction([
+      // Read the prior status first so we can detect an offline/degraded->online
+      // recovery, and preserve an operator-set `draining` state across heartbeats.
+      const prior = await prisma.node.findUnique({
+        where: { id: node.id },
+        select: { status: true },
+      });
+      const cameBackOnline = prior?.status === 'offline' || prior?.status === 'degraded';
+      const newStatus = prior?.status === 'draining' ? 'draining' : 'online';
+
+      const [, pending] = await prisma.$transaction([
         prisma.node.update({
           where: { id: node.id },
           data: {
-            status: 'online',
+            status: newStatus,
             lastHeartbeatAt: new Date(),
             cpuUsagePercent: t.cpuUsagePercent,
             memoryUsedMb: t.memoryUsedMb,
@@ -122,8 +132,33 @@ export default async function agentRoutes(app: FastifyInstance) {
           },
         }),
         prisma.nodeCommand.count({ where: { nodeId: node.id, status: 'queued' } }),
-        prisma.node.findUnique({ where: { id: node.id }, select: { status: true } }),
       ]);
+
+      // If the node just recovered, tell subscribers the status flipped back.
+      if (cameBackOnline) {
+        await realtime.publish(SSE_CHANNELS.node(node.id), 'node.status', {
+          nodeId: node.id,
+          status: newStatus,
+        });
+        await realtime.publish(SSE_CHANNELS.workspace(node.workspaceId), 'node.status', {
+          nodeId: node.id,
+          status: newStatus,
+        });
+      }
+
+      // Reconcile the node's apps against what it actually reports running:
+      // recover confirmed apps, flag missing ones, and auto-heal on reconnect.
+      // Best-effort — never fail the heartbeat over reconciliation.
+      try {
+        await reconcileNodeApps(prisma, realtime, queues.deploy, {
+          nodeId: node.id,
+          workspaceId: node.workspaceId,
+          reportedRunningAppIds: t.runningApps,
+          cameBackOnline,
+        });
+      } catch (err) {
+        app.log.warn({ err, nodeId: node.id }, 'node reconcile failed');
+      }
 
       await prisma.nodeHeartbeat.create({
         data: {
@@ -139,10 +174,9 @@ export default async function agentRoutes(app: FastifyInstance) {
         memoryUsedMb: t.memoryUsedMb,
       });
 
-      const desired = current?.status === 'draining' ? 'draining' : 'online';
       return {
         ok: true as const,
-        desiredStatus: desired,
+        desiredStatus: newStatus,
         hasPendingCommands: pending > 0,
         serverTime: new Date().toISOString(),
       };

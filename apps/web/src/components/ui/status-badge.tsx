@@ -24,6 +24,7 @@ const appMap: Record<string, Variant> = {
   [AppStatus.IDLE]: 'default',
   [AppStatus.STOPPED]: 'default',
   [AppStatus.FAILED]: 'danger',
+  [AppStatus.UNREACHABLE]: 'warning',
 };
 
 const nodeMap: Record<string, Variant> = {

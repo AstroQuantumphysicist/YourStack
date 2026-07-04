@@ -11,12 +11,18 @@ import type { RealtimeHub } from '../realtime/hub.js';
 
 export interface TriggerDeploymentInput {
   appId: string;
-  triggeredBy: string; // "manual" | "webhook" | "cli" | email
+  triggeredBy: string; // "manual" | "webhook" | "cli" | "reconcile" | email
   triggeredById?: string;
   ref?: string;
   commitSha?: string;
   commitMessage?: string;
   reason?: string;
+  /**
+   * System-initiated deployment (e.g. auto-heal when a node reconnects). These
+   * bypass the daily deployment quota and are not counted against it, since the
+   * user didn't request them.
+   */
+  system?: boolean;
 }
 
 /**
@@ -41,14 +47,16 @@ export async function triggerDeployment(
   const workspace = app.project.workspace;
   const day = todayKey();
 
-  // Enforce daily deployment plan limit.
-  const usage = await prisma.usageRecord.findUnique({
-    where: { workspaceId_metric_day: { workspaceId: workspace.id, metric: 'deployments', day } },
-  });
-  if ((usage?.quantity ?? 0) >= workspace.plan.maxDeploymentsPerDay) {
-    throw Errors.planLimit(
-      `Daily deployment limit reached (${workspace.plan.maxDeploymentsPerDay}). Upgrade your plan.`,
-    );
+  // Enforce daily deployment plan limit (skipped for system-initiated auto-heal).
+  if (!input.system) {
+    const usage = await prisma.usageRecord.findUnique({
+      where: { workspaceId_metric_day: { workspaceId: workspace.id, metric: 'deployments', day } },
+    });
+    if ((usage?.quantity ?? 0) >= workspace.plan.maxDeploymentsPerDay) {
+      throw Errors.planLimit(
+        `Daily deployment limit reached (${workspace.plan.maxDeploymentsPerDay}). Upgrade your plan.`,
+      );
+    }
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -77,11 +85,14 @@ export async function triggerDeployment(
 
     await tx.app.update({ where: { id: app.id }, data: { status: 'building' } });
 
-    await tx.usageRecord.upsert({
-      where: { workspaceId_metric_day: { workspaceId: workspace.id, metric: 'deployments', day } },
-      create: { workspaceId: workspace.id, metric: 'deployments', day, quantity: 1 },
-      update: { quantity: { increment: 1 } },
-    });
+    // System-initiated auto-heal deployments are not billed against the quota.
+    if (!input.system) {
+      await tx.usageRecord.upsert({
+        where: { workspaceId_metric_day: { workspaceId: workspace.id, metric: 'deployments', day } },
+        create: { workspaceId: workspace.id, metric: 'deployments', day, quantity: 1 },
+        update: { quantity: { increment: 1 } },
+      });
+    }
 
     return { deployment, version };
   });
